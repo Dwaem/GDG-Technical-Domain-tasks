@@ -1,0 +1,2051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Galaxy : The Interview Odyssey - FPOV Edition</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+  
+  <!-- External Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tsparticles-confetti/2.12.0/tsparticles.confetti.bundle.min.js"></script>
+
+  <style>
+    /* --- CSS VARIABLES & RESET --- */
+    :root {
+      --space-black: #0b0c10;
+      --neon-cyan: #66fcf1;
+      --neon-purple: #b829ea;
+      --danger-red: #ff2a2a;
+      --success-green: #28a745;
+      --gold-scrap: #ffd700;
+      --neon-amber: #ffaa00;
+      --text-glow: 0 0 8px rgba(102, 252, 241, 0.6);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+    /* --- STAR JEDI FONT --- */
+    @font-face {
+      font-family: 'StarJedi';
+      src: url('./StarJedi-DGRW.ttf') format('truetype'),
+           url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/718469/Starjedi.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    body {
+      font-family: 'Orbitron', sans-serif;
+      background-color: #000;
+      color: var(--neon-cyan); min-height: 100vh; overflow: hidden;
+    }
+
+    /* --- THREE.JS CONTAINER & VIGNETTE --- */
+    #webgl-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+    
+    #webgl-container canvas {
+      width: 100vw !important;
+      height: 100vh !important;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+
+    #soft-vignette {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none;
+      background: radial-gradient(circle at center, transparent 45%, rgba(0,0,0,0.95) 120%);
+      z-index: 55;
+    }
+
+    /* --- CRT SCANLINES --- */
+    .crt-overlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 4px; z-index: 9999; pointer-events: none; mix-blend-mode: overlay;
+    }
+
+    /* --- 1. REALISTIC CANOPY & GLASS OVERLAY --- */
+    #cockpit-canopy {
+      position: fixed; inset: 0; z-index: 45; pointer-events: none;
+      background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 35%, rgba(102,252,241,0.03) 70%, transparent 100%),
+                  url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 20l25 35m40-10l-15 45m90-20l10 15' stroke='rgba(255,255,255,0.03)' stroke-width='0.5' fill='none'/%3E%3C/svg%3E");
+      box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.85);
+      transform-origin: center center; will-change: transform;
+    }
+
+    #canopy-struts { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 46; }
+    #engine-glow {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 30vh;
+      background: radial-gradient(ellipse at bottom, rgba(102, 252, 241, 0.25) 0%, transparent 70%);
+      opacity: 0; transition: opacity 0.1s; mix-blend-mode: screen; z-index: 47;
+    }
+
+    /* --- EMERGENCY STROBE & INTEL BANNER --- */
+    #emergency-strobe {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(255, 0, 0, 0.35); mix-blend-mode: overlay;
+      z-index: 110; pointer-events: none; opacity: 0; transition: opacity 0.1s;
+    }
+    #emergency-strobe.flash { animation: strobeAnim 0.3s infinite alternate; }
+    @keyframes strobeAnim { 0% { opacity: 0; } 100% { opacity: 1; } }
+
+    #intel-banner {
+      position: absolute; top: 12%; left: 50%; transform: translateX(-50%);
+      background: rgba(25, 15, 0, 0.85); border: 1px solid var(--neon-amber);
+      color: var(--neon-amber); padding: 15px 30px; border-radius: 6px;
+      text-align: center; box-shadow: 0 0 20px rgba(255, 170, 0, 0.5), inset 0 0 10px rgba(255, 170, 0, 0.2);
+      z-index: 70; opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+      width: 65%; max-width: 800px;
+    }
+    #intel-banner::before {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,170,0,0.08) 2px, rgba(255,170,0,0.08) 4px);
+      pointer-events: none; z-index: -1;
+    }
+    .intel-title { font-weight: 900; font-size: 0.95rem; margin-bottom: 10px; text-shadow: 0 0 8px var(--neon-amber); letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .intel-title::before, .intel-title::after { content: ''; height: 1px; flex: 1; background: var(--neon-amber); opacity: 0.5; }
+    .intel-body { font-family: sans-serif; font-size: 1.05rem; line-height: 1.5; color: #ffdd99; text-shadow: 0 0 2px rgba(255, 221, 153, 0.5); }
+
+    /* --- 2. HOLOGRAPHIC MFD GAUGES (BOTTOM EDGE) --- */
+    #holographic-hud {
+      position: fixed; bottom: 15px; left: 2vw; right: 2vw;
+      display: flex; justify-content: space-between; align-items: flex-end;
+      z-index: 50; pointer-events: none;
+      transform-origin: center center; will-change: transform;
+    }
+
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%);
+      border: 1px solid rgba(102, 252, 241, 0.25);
+      clip-path: polygon(0 15px, 15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+      height: 90px; display: flex; align-items: center; padding: 10px 20px;
+      color: var(--neon-cyan); box-shadow: 0 10px 30px rgba(0,0,0,0.5); pointer-events: auto;
+    }
+
+    /* Left MFD: Hull & Pitch Ladder */
+    .mfd-left { width: 25vw; justify-content: space-between; gap: 15px; }
+    .hull-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+    .mfd-title { font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; }
+    .hull-bar-container { width: 100%; height: 10px; background: rgba(0,0,0,0.5); border-radius: 5px; overflow: hidden; margin-bottom: 5px; }
+    .hull-bar-inner { height: 100%; background: var(--neon-cyan); width: 100%; transition: width 0.3s, background-color 0.3s; box-shadow: 0 0 10px var(--neon-cyan); }
+    .hull-info { display: flex; justify-content: space-between; align-items: baseline; }
+    .hull-text { font-size: 1.2rem; font-weight: bold; text-shadow: var(--text-glow); }
+    .telemetry-data { font-size: 0.65rem; color: #aaa; text-align: right; }
+    
+    .pitch-ladder-container {
+      width: 40px; height: 60px; border-left: 1px solid rgba(102, 252, 241, 0.3); border-right: 1px solid rgba(102, 252, 241, 0.3);
+      position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center;
+    }
+    .pitch-ladder-inner { position: absolute; width: 100%; display: flex; flex-direction: column; gap: 15px; align-items: center; transition: transform 0.1s linear; }
+    .ladder-rung { width: 20px; height: 2px; background: rgba(102, 252, 241, 0.6); position: relative; }
+    .ladder-rung::before, .ladder-rung::after { content: ''; position: absolute; width: 5px; height: 5px; border-top: 2px solid rgba(102, 252, 241, 0.6); top: 0; }
+    .ladder-rung::before { left: -5px; border-left: 2px solid rgba(102, 252, 241, 0.6); }
+    .ladder-rung::after { right: -5px; border-right: 2px solid rgba(102, 252, 241, 0.6); }
+
+    /* Center MFD: Scrap & Rank */
+    .mfd-center { 
+      width: 22vw; flex-direction: column; justify-content: center;
+      clip-path: none; border-radius: 50% 50% 0 0 / 20px 20px 0 0; border-bottom: none;
+      border-color: rgba(255, 215, 0, 0.4);
+    }
+    #hud-scrap { color: var(--gold-scrap); text-shadow: 0 0 15px var(--gold-scrap); font-size: 2.2rem; font-family: monospace; line-height: 1; }
+    #hud-rank { color: var(--success-green); text-shadow: 0 0 10px var(--success-green); font-size: 0.8rem; letter-spacing: 3px; text-transform: uppercase; margin-top: 5px; }
+
+    /* Right MFD: Radar & Actions */
+    .mfd-right { width: 25vw; flex-direction: row; justify-content: space-between; align-items: center; position: relative; }
+    .radar-container {
+      width: 60px; height: 60px; border-radius: 50%; border: 1px solid rgba(102, 252, 241, 0.5);
+      position: relative; overflow: hidden; background: rgba(0, 20, 40, 0.4); box-shadow: inset 0 0 15px rgba(102, 252, 241, 0.2);
+    }
+    .radar-sweep {
+      position: absolute; width: 50%; height: 50%; top: 0; right: 0; transform-origin: 0% 100%;
+      background: conic-gradient(from 90deg, rgba(102, 252, 241, 0.6) 0deg, transparent 60deg);
+      animation: radarSpin 2s linear infinite;
+    }
+    .radar-dot { position: absolute; width: 4px; height: 4px; background: var(--danger-red); border-radius: 50%; top: 30%; left: 60%; box-shadow: 0 0 5px var(--danger-red); animation: pulseDot 1s infinite alternate; }
+    @keyframes radarSpin { 100% { transform: rotate(360deg); } }
+    @keyframes pulseDot { 0% { opacity: 0.5; } 100% { opacity: 1; transform: scale(1.5); } }
+
+    .mfd-target-info { flex: 1; margin-left: 15px; display: flex; flex-direction: column; justify-content: center; }
+    #target-display { font-size: 0.75rem; line-height: 1.4; color: var(--neon-cyan); text-shadow: var(--text-glow); margin-bottom: 5px; }
+    .mfd-actions { display: flex; flex-direction: column; gap: 8px; }
+    .action-btn {
+      background: rgba(184, 41, 234, 0.2); border: 1px solid var(--neon-purple); color: var(--neon-purple);
+      padding: 4px 8px; font-family: 'Orbitron'; font-size: 0.7rem; font-weight: bold; cursor: pointer;
+      text-transform: uppercase; transition: all 0.2s; border-radius: 4px;
+    }
+    .action-btn:hover { background: rgba(184, 41, 234, 0.5); box-shadow: 0 0 10px var(--neon-purple); color: #fff; }
+
+    /* --- WAYPOINT NAVIGATION COMPASS & CHROMATIC FX --- */
+    #waypoint-arrow {
+      position: fixed; z-index: 100; pointer-events: none;
+      transform: translate(-50%, -50%); transition: opacity 0.2s ease; opacity: 0;
+      font-family: 'StarJedi', 'Orbitron', sans-serif;
+    }
+    .wp-content { display: flex; flex-direction: column; align-items: center; justify-content: center; animation: pulseWaypoint 1.2s infinite alternate; }
+    @keyframes pulseWaypoint { from { filter: drop-shadow(0 0 5px var(--neon-cyan)); transform: scale(0.95); } to { filter: drop-shadow(0 0 20px var(--neon-cyan)); transform: scale(1.1); } }
+    .wp-pointer { width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 40px solid var(--neon-cyan); margin-bottom: 8px; transition: border-color 0.3s ease; }
+    .wp-label { color: var(--neon-cyan); font-size: 1.4rem; text-shadow: 0 0 10px var(--neon-cyan); white-space: nowrap; background: rgba(0,0,0,0.7); padding: 6px 12px; border-radius: 4px; transition: color 0.3s ease, text-shadow 0.3s ease; }
+
+    /* Chromatic Iridescence Tracker */
+    @keyframes chromaText { 0% { color: #4a00e0; text-shadow: 0 0 10px #4a00e0; border-color: #4a00e0; } 33% { color: #00f2fe; text-shadow: 0 0 10px #00f2fe; border-color: #00f2fe; } 66% { color: #4facfe; text-shadow: 0 0 10px #4facfe; border-color: #4facfe; } 100% { color: #4a00e0; text-shadow: 0 0 10px #4a00e0; border-color: #4a00e0; } }
+    @keyframes chromaBorder { 0% { border-bottom-color: #4a00e0; filter: drop-shadow(0 0 8px #4a00e0); } 33% { border-bottom-color: #00f2fe; filter: drop-shadow(0 0 8px #00f2fe); } 66% { border-bottom-color: #4facfe; filter: drop-shadow(0 0 8px #4facfe); } 100% { border-bottom-color: #4a00e0; filter: drop-shadow(0 0 8px #4a00e0); } }
+    .chromatic-wp .wp-label { animation: chromaText 3s linear infinite; border: 1px solid #00f2fe; }
+    .chromatic-wp .wp-pointer { animation: chromaBorder 3s linear infinite; }
+
+    /* --- CENTRAL CROSSHAIR --- */
+    #hud-overlays { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 55; }
+    #crosshair {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 32px; height: 32px; border: 1px solid rgba(102, 252, 241, 0.4); border-radius: 50%;
+      display: flex; justify-content: center; align-items: center; transition: all 0.2s ease;
+      pointer-events: none; z-index: 60;
+    }
+    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: var(--neon-cyan); transition: all 0.2s ease; }
+    #crosshair::before { width: 2px; height: 6px; top: -3px; left: 14px; box-shadow: 0 34px 0 var(--neon-cyan); }
+    #crosshair::after { height: 2px; width: 6px; left: -3px; top: 14px; box-shadow: 34px 0 0 var(--neon-cyan); }
+
+    #crosshair.locked { border-color: var(--success-green); transform: translate(-50%, -50%) scale(1.3); box-shadow: 0 0 15px rgba(40, 167, 69, 0.5); }
+    #crosshair.locked::before, #crosshair.locked::after { background: var(--success-green); }
+    #crosshair.locked::before { box-shadow: 0 34px 0 var(--success-green); }
+    #crosshair.locked::after { box-shadow: 34px 0 0 var(--success-green); }
+
+    /* --- DIEGETIC TACTICAL INTEL CARD --- */
+    #tactical-intel-card {
+      position: absolute; top: 25%; right: 8%; width: 320px;
+      background: rgba(11, 16, 22, 0.85); backdrop-filter: blur(10px);
+      border: 1px solid var(--neon-cyan); border-radius: 8px;
+      padding: 15px; color: var(--neon-cyan); box-shadow: 0 0 20px rgba(102,252,241,0.2);
+      opacity: 0; transition: opacity 0.3s ease; pointer-events: none; z-index: 65;
+      transform: perspective(600px) rotateY(-10deg);
+    }
+    .intel-card-header { font-family: 'StarJedi', sans-serif; font-size: 1.1rem; text-shadow: var(--text-glow); margin-bottom: 5px; color: var(--gold-scrap); line-height: 1.2; }
+    .intel-card-tier { font-size: 0.75rem; color: #aaa; margin-bottom: 10px; border-bottom: 1px solid rgba(102,252,241,0.3); padding-bottom: 5px; text-transform: uppercase;}
+    .intel-card-dist { font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; text-shadow: var(--text-glow); }
+    .intel-card-fact { font-family: sans-serif; font-size: 0.85rem; line-height: 1.4; color: #ddd; }
+
+    #orbit-prompt {
+      position: absolute; top: 60%; left: 50%; transform: translate(-50%, 0);
+      background: rgba(0, 0, 0, 0.8); border: 1px solid var(--neon-cyan); color: var(--neon-cyan);
+      padding: 10px 20px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; text-align: center;
+      text-shadow: 0 0 5px var(--neon-cyan); box-shadow: 0 0 15px rgba(102,252,241,0.3);
+      display: none; animation: pulsePrompt 1.5s infinite alternate; letter-spacing: 1px; font-family: 'StarJedi', 'Orbitron', sans-serif;
+      pointer-events: auto; cursor: pointer; z-index: 60;
+    }
+    #orbit-prompt.denied { border-color: var(--danger-red); color: var(--danger-red); text-shadow: 0 0 5px var(--danger-red); box-shadow: 0 0 15px rgba(255,42,42,0.3); pointer-events: none; }
+    @keyframes pulsePrompt { from { opacity: 0.7; } to { opacity: 1; transform: translate(-50%, -5px); } }
+
+    #resume-prompt {
+      display: none; position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8); border: 1px solid var(--neon-purple); color: #fff;
+      padding: 15px 30px; border-radius: 8px; font-weight: bold; letter-spacing: 2px;
+      z-index: 80; pointer-events: none; animation: pulsePrompt 1.5s infinite alternate;
+    }
+
+    /* --- STATIC TOP HUD --- */
+    .hud-header {
+      display: flex; justify-content: space-between; align-items: flex-start; padding: 1.5rem 2rem;
+      position: fixed; top: 0; left: 0; width: 100%; z-index: 100; font-size: 0.9rem; font-weight: 500;
+      pointer-events: none; 
+    }
+    .right-hud { display: flex; align-items: center; gap: 1.5rem; pointer-events: auto; }
+    #gamepad-status {
+      display: none; background: rgba(102, 252, 241, 0.15); border: 1px solid var(--neon-cyan);
+      padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; color: var(--neon-cyan); animation: pulseCyan 2s infinite alternate;
+    }
+    #top-controls { position: fixed; top: 20px; right: 20px; z-index: 100; pointer-events: auto; display: flex; gap: 15px; }
+    .top-btn { background: rgba(0,0,0,0.8); border: 1px solid var(--neon-cyan); color: var(--neon-cyan); padding: 8px 12px; font-family: 'Orbitron'; cursor: pointer; border-radius: 4px; transition: 0.2s; }
+    .top-btn:hover { background: rgba(102, 252, 241, 0.2); box-shadow: 0 0 10px var(--neon-cyan); color: #fff; }
+
+    /* --- HOLOGRAPHIC MODALS --- */
+    .modal-overlay { 
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: rgba(0, 0, 0, 0.6); z-index: 200; justify-content: center; align-items: center; 
+      opacity: 0; transition: opacity 0.3s ease; perspective: 800px; pointer-events: auto;
+    }
+    .modal-overlay.active { display: flex; opacity: 1; }
+    
+    .modal-content { 
+      background: rgba(11, 24, 33, 0.85); backdrop-filter: blur(12px);
+      border: 1px solid var(--neon-cyan); box-shadow: 0 0 40px rgba(102, 252, 241, 0.2);
+      width: 95%; max-width: 550px; padding: 2rem; position: relative; overflow: hidden;
+      transform: rotateX(4deg); transition: transform 0.3s ease; border-radius: 12px;
+      pointer-events: auto;
+    }
+    .diag-content { max-width: 700px; max-height: 80vh; overflow-y: auto; }
+    .modal-content::before {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(102,252,241,0.05) 2px, rgba(102,252,241,0.05) 4px);
+      pointer-events: none; z-index: -1;
+    }
+
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(102,252,241,0.3); padding-bottom: 0.5rem;}
+    .modal-title { color: var(--neon-cyan); font-size: 1.3rem; text-shadow: var(--text-glow); text-transform: uppercase; letter-spacing: 2px; font-family: 'StarJedi', 'Orbitron', sans-serif;}
+    
+    .timer-wrapper { position: relative; width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; }
+    .timer-svg { position: absolute; top: 0; left: 0; transform: rotate(-90deg); }
+    #modal-timer-text { font-size: 1.1rem; font-weight: bold; color: var(--neon-cyan); transition: color 0.3s; }
+    
+    .question-track { color: var(--neon-purple); font-size: 0.8rem; letter-spacing: 1px; margin-bottom: 5px; font-weight: bold; }
+    .question-text { color: #fff; font-size: 1.1rem; margin-bottom: 1.5rem; line-height: 1.6; font-family: sans-serif; text-align: left; text-shadow: 0 0 3px rgba(255,255,255,0.3); }
+    .options-grid { display: flex; flex-direction: column; gap: 0.8rem; }
+    
+    .question-explanation { display: none; margin-top: 15px; padding: 12px; background: rgba(0,0,0,0.5); border-left: 3px solid var(--neon-cyan); color: #ccc; font-size: 0.85rem; line-height: 1.4; animation: slideUpFade 0.4s ease forwards; }
+
+    .btn {
+      font-family: 'Orbitron', sans-serif; background: rgba(102, 252, 241, 0.05); color: var(--neon-cyan); border: 1px solid rgba(102,252,241,0.3);
+      padding: 1rem; font-size: 0.95rem; font-weight: 500; cursor: pointer; width: 100%; text-align: left; transition: all 0.2s ease;
+      clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+      pointer-events: auto;
+    }
+    .btn:hover:not(:disabled) { background: rgba(102, 252, 241, 0.2); box-shadow: inset 0 0 10px rgba(102,252,241,0.3); }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { cursor: not-allowed; opacity: 0.5; }
+    
+    .btn-correct { background: rgba(40, 167, 69, 0.8) !important; color: #fff !important; opacity: 1 !important; box-shadow: 0 0 20px var(--success-green); border-color: var(--success-green); }
+    .btn-wrong { background: rgba(255, 42, 42, 0.8) !important; color: #fff !important; opacity: 1 !important; box-shadow: 0 0 20px var(--danger-red); border-color: var(--danger-red); }
+    .btn-option.highlighted { background: rgba(255, 215, 0, 0.25); border-left: 5px solid var(--gold-scrap); box-shadow: inset 0 0 15px rgba(255, 215, 0, 0.3); transform: scale(1.02); color: #fff; }
+
+    .btn-primary { background: rgba(102, 252, 241, 0.2); text-align: center; text-transform: uppercase; font-weight: 700; margin-top: 1rem; }
+    .btn-small { padding: 0.6rem 1.2rem; font-size: 0.8rem; text-align: center; margin: 0; width: auto; }
+    .btn-lifeline { color: var(--neon-purple); background: rgba(184, 41, 234, 0.15); border-color: var(--neon-purple); text-align: center; margin-top: 1rem; }
+
+    @keyframes slideUpFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    .btn-option { opacity: 0; animation: slideUpFade 0.4s ease forwards; }
+
+    /* Engineering Bay */
+    .upgrade-item { display: flex; flex-direction: column; text-align: left; background: rgba(0,0,0,0.6); padding: 1.2rem; border-radius: 6px; margin-bottom: 1rem; border-left: 3px solid var(--neon-purple); transition: all 0.2s ease; }
+    .upgrade-item.focused-item { border-color: var(--neon-cyan); box-shadow: 0 0 20px rgba(102, 252, 241, 0.3); background: rgba(102, 252, 241, 0.1); transform: scale(1.02); }
+    .upgrade-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .upgrade-title { font-weight: 700; color: var(--neon-cyan); font-size: 1.1rem; }
+    .upgrade-cost { color: var(--gold-scrap); font-size: 0.9rem; font-weight: bold; }
+    .upgrade-desc { font-family: sans-serif; font-size: 0.85rem; color: #ccc; margin-bottom: 1rem; line-height: 1.4; }
+
+    /* Diagnostics UI */
+    .diag-section { margin-bottom: 1.5rem; text-align: left; background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 6px; border: 1px solid rgba(102, 252, 241, 0.2); }
+    .diag-h3 { color: var(--gold-scrap); font-size: 1rem; margin-bottom: 0.5rem; text-transform: uppercase; font-family: 'StarJedi', sans-serif;}
+    .diag-p { color: #ddd; font-family: sans-serif; font-size: 0.9rem; line-height: 1.4; margin-bottom: 0.5rem; }
+    .diag-list { list-style-type: none; padding: 0; }
+    .diag-list li { color: #aaa; font-family: sans-serif; font-size: 0.85rem; margin-bottom: 0.5rem; border-left: 2px solid var(--neon-cyan); padding-left: 8px; line-height: 1.4; }
+    .diag-good { border-left-color: var(--success-green) !important; color: #cfc !important;}
+    .diag-bad { border-left-color: var(--danger-red) !important; color: #fcc !important;}
+
+    /* Win/Loss Modals */
+    .win-banner { color: var(--gold-scrap); font-size: 1.8rem; text-shadow: 0 0 15px rgba(255, 215, 0, 0.8); margin-bottom: 0.5rem; line-height: 1.3; letter-spacing: 2px; font-family: 'StarJedi', 'Orbitron', sans-serif;}
+    .win-sub { color: var(--neon-cyan); font-size: 1rem; margin-bottom: 2.5rem; letter-spacing: 1px; }
+    .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); font-family: sans-serif; }
+    .stat-row span:first-child { color: #ccc; font-size: 1rem; }
+    .stat-val { font-family: 'Orbitron', sans-serif; font-size: 1.3rem; color: #fff; font-weight: bold; }
+    .stat-val.gold { color: var(--gold-scrap); }
+    .stat-val.green { color: var(--success-green); }
+    
+    .shake { animation: shakeError 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+    @keyframes shakeError { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-15px); } 40%, 80% { transform: translateX(15px); } }
+    .flash-red { animation: screenRedFlash 0.5s ease-out; }
+    @keyframes screenRedFlash { 0% { background: rgba(255, 0, 0, 0.6); } 100% { background: transparent; } }
+
+    /* START SCREEN */
+    #start-screen {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: var(--space-black); z-index: 10000;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      transition: opacity 0.5s ease; pointer-events: auto; cursor: pointer;
+    }
+    #start-screen h1 {
+      font-size: clamp(2rem, 5vw, 4rem); color: var(--neon-cyan); text-shadow: 0 0 20px var(--gold-scrap), 0 0 10px var(--neon-cyan);
+      margin-bottom: 1rem; text-align: center; padding: 0 20px; letter-spacing: 3px; font-family: 'StarJedi', 'Orbitron', sans-serif;
+    }
+    #start-screen h2 { font-size: clamp(1rem, 2vw, 1.5rem); color: #fff; margin-bottom: 4rem; text-align: center; padding: 0 20px; font-weight: normal; }
+    .shockwave {
+      position: fixed; top: 50%; left: 50%; width: 10px; height: 10px;
+      background: transparent; border: 5px solid var(--neon-cyan); border-radius: 50%;
+      transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: none; z-index: 9998;
+    }
+    @keyframes shockwaveExpand { to { transform: translate(-50%, -50%) scale(150); opacity: 0; border-width: 0px; } }
+    .lens-flare {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: #fff; opacity: 0; pointer-events: none; z-index: 9997; mix-blend-mode: overlay;
+    }
+    @keyframes flareFlash { 0% { opacity: 0; } 10% { opacity: 1; } 100% { opacity: 0; } }
+    .warp-shake { animation: warpShakeAnim 0.8s ease-out; }
+    @keyframes warpShakeAnim { 0%, 100% { transform: translate(0, 0); } 10%, 30%, 50%, 70%, 90% { transform: translate(-15px, 15px); } 20%, 40%, 60%, 80% { transform: translate(15px, -15px); } }
+  </style>
+</head>
+<body id="game-body">
+
+  <!-- BACKGROUND MUSIC ENGINE -->
+  <audio id="bgm" src="./bgm.mp3" loop preload="auto"></audio>
+
+  <!-- 3D WEBGL RENDERER & SEAMLESS VIGNETTE -->
+  <div id="webgl-container"></div>
+  <div id="soft-vignette"></div>
+  
+  <!-- REALISTIC CANOPY & GLASS OVERLAY -->
+  <div id="cockpit-canopy">
+      <svg id="canopy-struts" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path d="M0,0 L12,0 Q5,50 12,100 L0,100 Z" fill="#05080a" stroke="#1a2533" stroke-width="0.2"/>
+          <path d="M100,0 L88,0 Q95,50 88,100 L100,100 Z" fill="#05080a" stroke="#1a2533" stroke-width="0.2"/>
+      </svg>
+      <div id="glass-sheer"></div>
+      <div id="engine-glow"></div>
+  </div>
+
+  <div class="crt-overlay"></div>
+  <div id="damage-vignette"></div>
+  <div id="emergency-strobe"></div>
+  <div id="intel-banner"></div>
+
+  <!-- START SCREEN -->
+  <div id="start-screen">
+    <h1>GALAXY : THE INTERVIEW ODYSSEY</h1>
+    <h2>A Tactical Skill-Building Voyage Through Tech Placements</h2>
+    <button class="btn btn-primary" id="btn-launch" style="font-size: 1.5rem; padding: 1.5rem 3rem;">[ INITIATE LAUNCH ]</button>
+    <p id="start-prompt" style="margin-top: 2rem; color: #888; font-size: 1rem; font-family: sans-serif;">[ CLICK ANYWHERE IN COCKPIT TO ENGAGE SYSTEMS ]</p>
+  </div>
+
+  <div id="resume-prompt">[ CLICK SCREEN TO RESUME FLIGHT ]</div>
+
+  <!-- TOP BUTTONS & HUD -->
+  <div id="top-controls">
+      <div id="gamepad-status">🎮 Controller: Active</div>
+      <button class="top-btn" id="btn-open-diag">[🧠 AI DIAG (TAB)]</button>
+      <button class="top-btn" id="btn-toggle-bgm">[🔇 BGM: OFF (M)]</button>
+  </div>
+
+  <!-- WAYPOINT NAVIGATION ARROW -->
+  <div id="waypoint-arrow">
+    <div class="wp-content">
+      <div class="wp-pointer"></div>
+      <div class="wp-label">▲ System (0m)</div>
+    </div>
+  </div>
+
+  <!-- HUD OVERLAYS (Crosshair, prompts - pinned to windshield) -->
+  <div id="hud-overlays">
+    <div id="crosshair"></div>
+    
+    <!-- Diegetic Tactical Intel Card -->
+    <div id="tactical-intel-card">
+      <div class="intel-card-header" id="intel-header">[ TARGET ACQUIRED ]</div>
+      <div class="intel-card-tier" id="intel-tier">STATUS: UNLOCKED | TIER 3</div>
+      <div class="intel-card-dist" id="intel-dist">DISTANCE: 0M</div>
+      <div class="intel-card-fact" id="intel-fact">Analyzing planetary data...</div>
+    </div>
+    
+    <div id="orbit-prompt"></div>
+  </div>
+
+  <!-- SLEEK HOLOGRAPHIC MFD GAUGES (BOTTOM EDGE ONLY) -->
+  <div id="holographic-hud">
+    
+    <!-- Left MFD: Hull & Telemetry -->
+    <div class="glass-panel mfd-left">
+      <div class="hull-wrap">
+          <div class="mfd-title">Hull Integrity</div>
+          <div class="hull-bar-container">
+              <div class="hull-bar-inner" id="hull-bar-inner" style="width: 100%;"></div>
+          </div>
+          <div class="hull-info">
+              <span class="hull-text" id="hud-hull-text">100%</span>
+              <span class="telemetry-data" id="telemetry-data">PITCH: 00 YAW: 00</span>
+          </div>
+      </div>
+      <div class="pitch-ladder-container">
+          <div class="pitch-ladder-inner" id="pitch-ladder">
+              <div class="ladder-rung"></div><div class="ladder-rung"></div>
+              <div class="ladder-rung"></div><div class="ladder-rung"></div>
+              <div class="ladder-rung"></div>
+          </div>
+      </div>
+    </div>
+    
+    <!-- Center MFD: Scrap & Rank -->
+    <div class="glass-panel glass-panel-center mfd-center">
+      <div id="hud-scrap">0000</div>
+      <div id="hud-rank">CADET</div>
+    </div>
+    
+    <!-- Right MFD: Radar & Actions -->
+    <div class="glass-panel mfd-right">
+      <div class="radar-container">
+          <div class="radar-sweep"></div>
+          <div class="radar-dot"></div>
+      </div>
+      <div class="mfd-target-info">
+          <div class="mfd-title">Tactical Radar</div>
+          <div id="target-display">LOCK: NONE<br>DIST: -- KM</div>
+      </div>
+      <div class="mfd-actions">
+          <button class="action-btn" id="btn-open-eng">ENG BAY [RB/E]</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ENGINEERING BAY MODAL -->
+  <div class="modal-overlay" id="eng-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Engineering Bay</div>
+        <button class="btn btn-small" style="background: rgba(255,42,42,0.1); color: var(--danger-red);" id="btn-close-eng">Close [B]</button>
+      </div>
+      <p style="color: #ccc; font-family: sans-serif; font-size: 0.95rem; margin-bottom: 1.5rem;">Upgrade your vessel using Tech-Scrap.</p>
+      <div class="upgrade-item">
+        <div class="upgrade-header"><span class="upgrade-title">Time Dilation Engine</span><span class="upgrade-cost">100 Scrap</span></div>
+        <div class="upgrade-desc">Passively increases encounter timer from 30s to 45s.</div>
+        <button class="btn btn-small btn-upgrade" onclick="buyUpgrade('timeDilation', 100, this)">Purchase [A]</button>
+      </div>
+      <div class="upgrade-item">
+        <div class="upgrade-header"><span class="upgrade-title">Quantum 50/50</span><span class="upgrade-cost">150 Scrap</span></div>
+        <div class="upgrade-desc">Grants 1 single-use consumable per encounter that disables 2 incorrect options.</div>
+        <button class="btn btn-small btn-upgrade" onclick="buyUpgrade('quantum5050', 150, this)">Purchase [A]</button>
+      </div>
+      <div class="upgrade-item">
+        <div class="upgrade-header"><span class="upgrade-title">Shield Reinforcement</span><span class="upgrade-cost">120 Scrap</span></div>
+        <div class="upgrade-desc">Reduces hull damage taken from wrong answers from 20% to 10%.</div>
+        <button class="btn btn-small btn-upgrade" onclick="buyUpgrade('shieldReinforcement', 120, this)">Purchase [A]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI DIAGNOSTICS MODAL -->
+  <div class="modal-overlay" id="diag-modal">
+    <div class="modal-content diag-content" style="border-color: var(--neon-amber); box-shadow: 0 0 40px rgba(255,170,0,0.2);">
+      <div class="modal-header" style="border-color: rgba(255,170,0,0.3);">
+        <div class="modal-title" style="color: var(--neon-amber); text-shadow: 0 0 8px rgba(255,170,0,0.6);">AI PERFORMANCE DIAGNOSTICS</div>
+        <button class="btn btn-small" style="background: rgba(255,42,42,0.1); color: var(--danger-red);" id="btn-close-diag">Close [B]</button>
+      </div>
+      <div id="diag-container">
+          <!-- Populated dynamically via generateDiagnostics() -->
+      </div>
+    </div>
+  </div>
+
+  <!-- GAMEPLAY MODAL -->
+  <div class="modal-overlay" id="game-modal">
+    <div class="modal-content" id="modal-box">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-title">System</div>
+        <div class="timer-wrapper">
+          <svg class="timer-svg" width="50" height="50" viewBox="0 0 45 45">
+            <circle cx="22.5" cy="22.5" r="18" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
+            <circle id="timer-ring" cx="22.5" cy="22.5" r="18" fill="none" stroke="var(--neon-cyan)" stroke-width="4" stroke-dasharray="113.1" stroke-dashoffset="0" style="transition: stroke-dashoffset 1s linear, stroke 0.3s;"/>
+          </svg>
+          <div id="modal-timer-text">30</div>
+        </div>
+      </div>
+      <div id="question-track" class="question-track"></div>
+      <div class="question-text" id="question-text">Loading simulation data...</div>
+      <div class="options-grid" id="options-container"></div>
+      
+      <!-- Explanation Container -->
+      <div id="question-explanation" class="question-explanation"></div>
+
+      <div id="lifelines-panel" style="display: none;">
+        <button class="btn btn-lifeline" id="btn-5050">Activate Quantum 50/50 [Y]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRIBUTE MODAL: IRIDESCENCE 1.0 -->
+  <div class="modal-overlay" id="iridescence-modal">
+    <div class="modal-content" style="background: rgba(20, 5, 40, 0.9); border-color: #00f2fe; box-shadow: 0 0 50px rgba(142, 45, 226, 0.6);">
+      <div class="modal-header" style="border-bottom-color: #8e2de2;">
+        <div class="modal-title" style="color: #00f2fe; text-shadow: 0 0 10px #4facfe;">WELCOME TO IRIDESCENCE 1.0 // GAMEATHON</div>
+        <button class="btn btn-small" style="background: rgba(255,42,42,0.1); color: var(--danger-red);" onclick="closeIridescence()">Close [B]</button>
+      </div>
+      <h3 style="color: #4facfe; margin-bottom: 20px; font-size: 1rem; letter-spacing: 2px;">School of Computing, SRMIST Kattankulathur, Chennai</h3>
+      <div style="text-align: left; color: #ddd; font-family: sans-serif; line-height: 1.6; margin-bottom: 25px; font-size: 0.95rem;">
+        <p style="margin-bottom: 10px;"><strong style="color: #8e2de2;">Event Origin:</strong> Flagship Gameathon bringing together creative game developers, designers, and algorithmic architects.</p>
+        <p style="margin-bottom: 10px;"><strong style="color: #00f2fe;">Mission Alignment:</strong> Built live during the hackathon to gamify corporate engineering placement drills into an interactive 3D aerospace flight simulator.</p>
+        <p><strong style="color: #4facfe;">Creative Vision:</strong> Blending retro 8-bit gameathon spirit with cutting-edge WebGL 3D flight mechanics and real-time placement prep telemetry.</p>
+      </div>
+      <button class="btn btn-primary" id="btn-fireworks" style="background: rgba(142,45,226,0.3); border-color: #00f2fe; color: #00f2fe; margin-bottom: 10px;">[ INITIATE VICTORY FIREWORKS ]</button>
+      <button class="btn btn-primary" onclick="closeIridescence()" style="background: rgba(102,252,241,0.1);">[ RETURN TO FLIGHT DECK ]</button>
+    </div>
+  </div>
+
+  <!-- MISSION COMPLETE MODAL (WIN) -->
+  <div class="modal-overlay" id="win-modal">
+    <div class="modal-content" style="box-shadow: 0 0 50px rgba(255, 215, 0, 0.4); border-color: var(--gold-scrap);">
+      <h2 class="win-banner">OFFER LETTER ACQUIRED</h2>
+      <p class="win-sub">STARFLEET CORE SYSTEMS</p>
+      <div style="margin-bottom: 2rem; text-align: left;">
+        <div class="stat-row"><span>Final Rank:</span><span class="stat-val" id="win-rank">Galactic Engineer</span></div>
+        <div class="stat-row"><span>Total Tech-Scrap:</span><span class="stat-val gold" id="win-scrap">0</span></div>
+        <div class="stat-row"><span>Combat Accuracy:</span><span class="stat-val green" id="win-accuracy">0%</span></div>
+      </div>
+      <button class="btn btn-primary" id="btn-play-again" style="border-color: var(--gold-scrap); color: var(--gold-scrap);">Play Again [A]</button>
+    </div>
+  </div>
+
+  <!-- GAME OVER MODAL (LOSE) -->
+  <div class="modal-overlay" id="game-over-modal">
+    <div class="modal-content" style="box-shadow: 0 0 50px rgba(255, 42, 42, 0.4); border-color: var(--danger-red);">
+      <h2 style="color: var(--danger-red); margin-bottom: 0.5rem; font-size: 1.8rem; text-shadow: 0 0 10px var(--danger-red);">SYSTEM FAILURE</h2>
+      <h3 style="color: #ff8c8c; font-size: 1.1rem; margin-bottom: 1.5rem;">REJECTED FROM SECTOR</h3>
+      <p style="color: #ccc; margin-bottom: 2.5rem; font-family: sans-serif; line-height: 1.5; font-size: 1.1rem;">
+        Simulation terminated.<br>Defeated by: <strong id="defeat-company" style="color: #fff;">Unknown</strong>
+      </p>
+      <button class="btn btn-primary" id="btn-restart" style="background: rgba(255,42,42,0.1); color: var(--danger-red); border-color: var(--danger-red);">Reroute Ship (Retry) [A]</button>
+    </div>
+  </div>
+
+  <script>
+    // --- THREE.JS 3D ENVIRONMENT & RESOLUTION UPSCALING ---
+    const scene = new THREE.Scene();
+    
+    // Explicit Fallback safe lighting 
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    dirLight.position.set(100, 200, 300);
+    scene.add(dirLight);
+
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 10000);
+    camera.rotation.order = 'YXZ'; 
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
+    document.getElementById('webgl-container').appendChild(renderer.domElement);
+
+    // Initial Camera Spawn
+    camera.position.set(0, 0, 400);
+    camera.lookAt(0, 0, -500);
+
+    // Particles (Stars)
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 3000;
+    const starPos = new Float32Array(starCount * 3);
+    for(let i=0; i<starCount * 3; i++) {
+        starPos[i] = (Math.random() - 0.5) * 6000;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 2, transparent: true, opacity: 0.8 });
+    const stars = new THREE.Points(starGeo, starMat);
+    scene.add(stars);
+
+    // Asteroid Field
+    const asteroidField = new THREE.Group();
+    scene.add(asteroidField);
+    const asteroids = [];
+    const astMat = new THREE.MeshStandardMaterial({
+        color: 0x444444, roughness: 0.8, metalness: 0.2, flatShading: true
+    });
+    
+    function createAsteroids() {
+        for(let i=0; i<10; i++) {
+            const radius = 15 + Math.random() * 20; 
+            const geo = new THREE.DodecahedronGeometry(radius, 1);
+            const posAttr = geo.attributes.position;
+            const vertex = new THREE.Vector3();
+            for(let j=0; j<posAttr.count; j++) {
+                vertex.fromBufferAttribute(posAttr, j);
+                const mag = 1 + (Math.random() * 0.4 - 0.2);
+                vertex.multiplyScalar(mag);
+                posAttr.setXYZ(j, vertex.x, vertex.y, vertex.z);
+            }
+            geo.computeVertexNormals();
+            const mesh = new THREE.Mesh(geo, astMat);
+            const astObj = {
+                mesh: mesh, radius: radius,
+                rotSpeed: new THREE.Vector3((Math.random()-0.5), (Math.random()-0.5), (Math.random()-0.5)).multiplyScalar(1.5),
+                velocity: new THREE.Vector3(),
+                active: true
+            };
+            respawnAsteroid(astObj, true);
+            asteroidField.add(mesh);
+            asteroids.push(astObj);
+        }
+    }
+
+    function respawnAsteroid(astObj, initial=false) {
+        const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        const dist = 1200 + Math.random() * 1400; 
+        const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+        const spreadX = (Math.random() - 0.5) * 1200; 
+        const spreadY = (Math.random() - 0.5) * 1200;
+        
+        let spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(dist)).add(right.multiplyScalar(spreadX)).add(up.multiplyScalar(spreadY));
+        
+        if(initial) {
+            spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(400 + Math.random() * 1400))
+                .add(right.multiplyScalar((Math.random() - 0.5) * 1200))
+                .add(up.multiplyScalar((Math.random() - 0.5) * 1200));
+        }
+
+        astObj.mesh.position.copy(spawnPos);
+        let astSpeed = 20 + Math.random() * 30;
+        if(window.currentThrottle > 0.5) astSpeed += 15;
+        astObj.velocity.copy(dir).multiplyScalar(-astSpeed);
+        
+        astObj.active = true;
+        astObj.mesh.visible = true;
+    }
+
+    function hideAndQueueRespawn(astObj) {
+        astObj.active = false;
+        astObj.mesh.visible = false;
+        setTimeout(() => {
+            respawnAsteroid(astObj);
+        }, 2000 + Math.random() * 1000);
+    }
+    
+    createAsteroids();
+
+    // Texture Loader with CORS Fallback
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin('anonymous');
+
+    function createTextSprite(text, colorStr) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 2048; canvas.height = 512;
+        const context = canvas.getContext('2d');
+        context.font = "bold 96px 'StarJedi', 'Orbitron', 'Impact', sans-serif";
+        context.textAlign = "center";
+        context.fillStyle = colorStr;
+        context.shadowColor = colorStr;
+        context.shadowBlur = 28;
+        context.fillText(text, 1024, 256);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.scale.set(300, 75, 1);
+        return sprite;
+    }
+
+    function updateTextSprite(sprite, text, colorStr) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 2048; canvas.height = 512;
+        const context = canvas.getContext('2d');
+        context.font = "bold 96px 'StarJedi', 'Orbitron', 'Impact', sans-serif";
+        context.textAlign = "center";
+        context.fillStyle = colorStr;
+        context.shadowColor = colorStr;
+        context.shadowBlur = 28;
+        context.fillText(text, 1024, 256);
+        
+        sprite.material.map.dispose();
+        sprite.material.map = new THREE.CanvasTexture(canvas);
+        sprite.material.needsUpdate = true;
+    }
+
+    // 3D PLANETS SETUP 
+    const planets = [];
+    function createPlanet(name, tier, glowColor, tintColor, emissiveStr, pos, radius, textureUrl, extras = {}) {
+        let texture = null;
+        try { if(textureUrl) texture = textureLoader.load(textureUrl); } catch(e) {}
+
+        const geo = new THREE.SphereGeometry(radius, 64, 64);
+        const matArgs = { 
+            color: new THREE.Color(tintColor), 
+            emissive: new THREE.Color(emissiveStr),
+            emissiveIntensity: 0.2,
+            roughness: extras.roughness || 0.75,
+            metalness: extras.metalness || 0.1,
+            side: THREE.FrontSide
+        };
+        if(texture) {
+            matArgs.map = texture;
+            matArgs.bumpMap = texture;
+            matArgs.bumpScale = 0.05;
+        }
+        
+        const mat = new THREE.MeshStandardMaterial(matArgs);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.rotation.z = Math.random() * 0.4 + 0.1; 
+        
+        const group = new THREE.Group();
+        group.position.copy(pos);
+        group.add(mesh);
+
+        // Atmosphere Glow Halo / Special Layers
+        if (extras.cloudLayer) {
+            const cloudGeo = new THREE.SphereGeometry(radius * 1.015, 64, 64);
+            const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, roughness: 1.0 });
+            if(texture) cloudMat.map = texture;
+            const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+            group.add(clouds);
+            group.userData.animate = (dt) => { clouds.rotation.y += 0.3 * dt; };
+        } else {
+            const atmosGeo = new THREE.SphereGeometry(radius * 1.025, 64, 64);
+            const atmosMat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(glowColor),
+                transparent: true,
+                opacity: 0.35,
+                blending: THREE.AdditiveBlending,
+                side: THREE.FrontSide,
+                depthWrite: false
+            });
+            const atmosMesh = new THREE.Mesh(atmosGeo, atmosMat);
+            if(extras.gridAura) { atmosMesh.material.wireframe = true; atmosMesh.material.opacity = 0.5; }
+            if(extras.hueShift) {
+                 let prevAnim = group.userData.animate;
+                 group.userData.animate = (dt) => {
+                     if(prevAnim) prevAnim(dt);
+                     const time = Date.now() * 0.001;
+                     const hue = 0.5 + Math.abs(Math.sin(time * 0.5)) * 0.4;
+                     atmosMesh.material.color.setHSL(hue, 1.0, 0.5);
+                 };
+            }
+            group.add(atmosMesh);
+        }
+
+        if(extras.wireframeShell) {
+            const shellGeo = new THREE.IcosahedronGeometry(radius * 1.1, 2);
+            const shellMat = new THREE.MeshBasicMaterial({ color: glowColor, wireframe: true, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending });
+            const shell = new THREE.Mesh(shellGeo, shellMat);
+            group.add(shell);
+            const prevAnim = group.userData.animate;
+            group.userData.animate = (dt) => { if(prevAnim) prevAnim(dt); shell.rotation.y -= 0.2 * dt; shell.rotation.z += 0.1 * dt; };
+        }
+
+        if(extras.dustRing) {
+            const ringGeo = new THREE.RingGeometry(radius * 1.4, radius * 2.0, 64);
+            const ringMat = new THREE.MeshStandardMaterial({ color: 0x8844aa, side: THREE.DoubleSide, transparent: true, opacity: 0.6, roughness: 0.9 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.rotation.y = THREE.MathUtils.degToRad(45);
+            group.add(ring);
+            const prevAnim = group.userData.animate;
+            group.userData.animate = (dt) => { if(prevAnim) prevAnim(dt); ring.rotation.z += 0.5 * dt; };
+        }
+
+        if(extras.multiBandRings) {
+            for(let i=0; i<3; i++) {
+                const ringGeo = new THREE.RingGeometry(radius * (1.5 + i*0.3), radius * (1.6 + i*0.3), 64);
+                const ringMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, side: THREE.DoubleSide, metalness: 0.8, roughness: 0.2, transparent: true, opacity: 0.8 - (i*0.2) });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2 + 0.2;
+                group.add(ring);
+            }
+        }
+
+        if(extras.bipolarJets) {
+            const jetGeo = new THREE.CylinderGeometry(radius * 0.1, radius * 0.1, radius * 6, 16);
+            const jetMat = new THREE.MeshBasicMaterial({ color: glowColor, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
+            const jet = new THREE.Mesh(jetGeo, jetMat);
+            group.add(jet);
+            const prevAnim = group.userData.animate;
+            group.userData.animate = (dt) => { if(prevAnim) prevAnim(dt); jet.scale.x = 1.0 + Math.sin(Date.now() * 0.01) * 0.2; jet.scale.z = 1.0 + Math.sin(Date.now() * 0.01) * 0.2; };
+        }
+
+        if(extras.swarmNodes) {
+            const swarmGroup = new THREE.Group();
+            const nodeGeo = new THREE.OctahedronGeometry(radius * 0.08, 0);
+            const nodeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: false });
+            for(let i=0; i<24; i++) {
+                const node = new THREE.Mesh(nodeGeo, nodeMat);
+                const angle = (i / 24) * Math.PI * 2;
+                node.position.set(Math.cos(angle) * radius * 1.5, (Math.random()-0.5)*radius*0.5, Math.sin(angle) * radius * 1.5);
+                swarmGroup.add(node);
+            }
+            group.add(swarmGroup);
+            const prevAnim = group.userData.animate;
+            group.userData.animate = (dt) => { if(prevAnim) prevAnim(dt); swarmGroup.rotation.y -= 0.8 * dt; swarmGroup.rotation.z += 0.2 * dt; };
+        }
+
+        if(extras.latLonTracks) {
+            const trackMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            const eqGeo = new THREE.TorusGeometry(radius * 1.01, 2, 16, 100);
+            const eq = new THREE.Mesh(eqGeo, trackMat);
+            eq.rotation.x = Math.PI / 2;
+            const merGeo = new THREE.TorusGeometry(radius * 1.01, 2, 16, 100);
+            const mer = new THREE.Mesh(merGeo, trackMat);
+            group.add(eq); group.add(mer);
+            const prevAnim = group.userData.animate;
+            group.userData.animate = (dt) => { if(prevAnim) prevAnim(dt); mer.rotation.y += 0.5 * dt; };
+        }
+
+        if (extras.dualBelts) {
+            const beltGeo = new THREE.TorusGeometry(radius * 1.6, radius * 0.05, 16, 100);
+            const beltMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+            const belt1 = new THREE.Mesh(beltGeo, beltMat);
+            belt1.rotation.x = Math.PI / 2;
+            belt1.rotation.y = THREE.MathUtils.degToRad(25);
+            const belt2 = new THREE.Mesh(beltGeo, beltMat);
+            belt2.rotation.x = Math.PI / 2;
+            belt2.rotation.y = THREE.MathUtils.degToRad(-65);
+            group.add(belt1); group.add(belt2);
+            const prevAnim = group.userData.animate;
+            group.userData.animate = (dt) => { if(prevAnim) prevAnim(dt); belt1.rotation.z += 0.4 * dt; belt2.rotation.z -= 0.3 * dt; };
+        }
+        
+        if (extras.pixelHalo) {
+            const haloGroup = new THREE.Group();
+            const colors = [0xff00ff, 0xffd700, 0x00ffff];
+            const cubeGeo = new THREE.BoxGeometry(8, 8, 8);
+            for(let i=0; i<60; i++) {
+                const mat = new THREE.MeshBasicMaterial({ color: colors[i%3] });
+                const cube = new THREE.Mesh(cubeGeo, mat);
+                const angle = (i / 60) * Math.PI * 2;
+                cube.position.set(Math.cos(angle) * radius * 1.3, (Math.random()-0.5)*20, Math.sin(angle) * radius * 1.3);
+                haloGroup.add(cube);
+            }
+            group.add(haloGroup);
+            const prevAnim = group.userData.animate;
+            group.userData.animate = (dt) => { if(prevAnim) prevAnim(dt); haloGroup.rotation.y += 0.4 * dt; };
+        }
+
+        let sprite;
+        if(extras.customLabel) {
+            sprite = createTextSprite(extras.customLabel, glowColor);
+        } else {
+            sprite = createTextSprite(`${name} [${tier}]`, glowColor);
+        }
+        sprite.position.y = radius + 140;
+        if(extras.tierLevel === 0) sprite.position.y = radius + 170; // Hover higher for Iridescence
+        group.add(sprite);
+
+        scene.add(group);
+        return { name: name, group: group, mesh: mesh, sprite: sprite, locked: false, cleared: false, radius: radius, tierLevel: extras.tierLevel !== undefined ? extras.tierLevel : 3, glowColor: glowColor, tintColor: tintColor };
+    }
+
+    // Tier 3
+    const tcsNode = createPlanet("TCS Nebula", "Tier 3", "#00ced1", "#ffffff", "#004d4d", new THREE.Vector3(-1400, 250, -1800), 150, "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/neptune.jpg", {tierLevel: 3, wireframeShell: true});
+    const infyNode = createPlanet("Infosys Outpost", "Tier 3", "#b829ea", "#d875ff", "#4a0066", new THREE.Vector3(1600, -200, -2800), 145, "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/mars_1k_color.jpg", {tierLevel: 3, dustRing: true});
+    const wiproNode = createPlanet("Wipro Station", "Tier 3", "#20c997", "#88ffcc", "#004d35", new THREE.Vector3(-1800, -350, -3900), 160, "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg", {tierLevel: 3, cloudLayer: true});
+    
+    // Tier 2
+    const oracleNode = createPlanet("Oracle Sanctuary", "Tier 2 - Locked", "#ff8c00", "#ffaa00", "#331100", new THREE.Vector3(1900, 400, -4800), 180, "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/jupiter.jpg", { tierLevel: 2, multiBandRings: true });
+    const qualcommNode = createPlanet("Qualcomm Pulsar", "Tier 2 - Locked", "#0055ff", "#ffffff", "#001133", new THREE.Vector3(-1200, 500, -5800), 170, "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg", { gridAura: true, tierLevel: 2 });
+
+    // Tier 1
+    const googleNode = createPlanet("Google Nexus", "Tier 1 - Locked", "#ff2a2a", "#ffffff", "#330000", new THREE.Vector3(-900, -400, -6900), 220, "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/jupiter.jpg", { tierLevel: 1, swarmNodes: true });
+    const appleNode = createPlanet("Apple Monolith", "Tier 1 - Locked", "#aaaaaa", "#ffffff", "#111111", new THREE.Vector3(1300, 300, -7800), 210, null, { metalness: 0.95, roughness: 0.1, tierLevel: 1, latLonTracks: true });
+    const amzNode = createPlanet("Amazon Core", "Tier 1 - Locked", "#ffaa00", "#ffffff", "#331100", new THREE.Vector3(0, 450, -8900), 250, "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/jupiter.jpg", { tierLevel: 1, dualBelts: true });
+
+    // Zenith Tribute World
+    const iriNode = createPlanet("Planet Iridescence", "", "#00f2fe", "#8e2de2", "#4a00e0", new THREE.Vector3(0, 600, -10200), 280, null, { tierLevel: 0, pixelHalo: true, hueShift: true, customLabel: "IRIDESCENCE 1.0 [LOCKED]", metalness: 0.5, roughness: 0.3 });
+
+    planets.push(tcsNode, infyNode, wiproNode, oracleNode, qualcommNode, googleNode, appleNode, amzNode, iriNode);
+
+    planets.forEach(p => {
+        if(p.tierLevel < 3) {
+            p.locked = true; p.mesh.material.color.setHex(0x333333); p.mesh.material.emissiveIntensity = 0;
+            if(p.tierLevel === 0) updateTextSprite(p.sprite, "IRIDESCENCE 1.0 [LOCKED]", "#777777");
+            else updateTextSprite(p.sprite, `${p.name} [Tier ${p.tierLevel} - Locked]`, "#777777");
+        }
+    });
+
+    // Window Resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
+    });
+
+    // --- AUDIO & BGM SYSTEM ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext; let audioCtx;
+    let isBgmOn = false;
+    
+    function initAudio() { if (!audioCtx) audioCtx = new AudioContext(); if (audioCtx.state === 'suspended') audioCtx.resume(); }
+    
+    function playBGM() {
+        try {
+            const audio = document.getElementById('bgm');
+            if (audio) {
+                audio.volume = 0.4;
+                audio.loop = true;
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(err => {
+                        console.warn("Local file autoplay policy prevented MP3; user can click the HUD toggle.", err);
+                        isBgmOn = false;
+                        document.getElementById('btn-toggle-bgm').textContent = "[🔇 BGM: OFF (M)]";
+                    });
+                }
+                isBgmOn = true;
+                document.getElementById('btn-toggle-bgm').textContent = "[🔊 BGM: ON (M)]";
+            }
+        } catch(e) {}
+    }
+
+    function toggleBGM() {
+        const bgm = document.getElementById('bgm');
+        const btn = document.getElementById('btn-toggle-bgm');
+        if (!bgm) return;
+        if (isBgmOn) {
+            bgm.pause(); isBgmOn = false; btn.textContent = "[🔇 BGM: OFF (M)]";
+        } else {
+            const playPromise = bgm.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => console.warn(e));
+            }
+            isBgmOn = true; btn.textContent = "[🔊 BGM: ON (M)]";
+            bgm.volume = 0.35;
+        }
+    }
+    document.getElementById('btn-toggle-bgm').addEventListener('click', (e) => { e.stopPropagation(); toggleBGM(); });
+
+    function sndCorrect() { 
+      if (!audioCtx) return; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.type = 'sine'; osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.15);
+    }
+    function sndWrong() { 
+      if (!audioCtx) return; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.type = 'sine'; osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.3);
+    }
+    function sndUnlock() {
+      if (!audioCtx) return; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.type = 'triangle'; osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(100, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.8);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.4); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+      osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.8);
+    }
+    function sndUpgrade() {
+      if (!audioCtx) return; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.type = 'square'; osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+      osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.2);
+    }
+    function sndLaunch() {
+      if (!audioCtx) return; 
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.type = 'sawtooth'; osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(50, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.6); 
+      osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 1.2); 
+      gain.gain.setValueAtTime(0, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.6); 
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2); 
+      osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 1.2);
+    }
+    function sndDock() {
+      if (!audioCtx) return; 
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.type = 'square'; osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1); 
+      osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.2); 
+      gain.gain.setValueAtTime(0, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.05); 
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); 
+      osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.3);
+    }
+    function sndImpact() {
+      if (!audioCtx) return; 
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.type = 'sawtooth'; 
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(150, audioCtx.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.2); 
+      gain.gain.setValueAtTime(1.0, audioCtx.currentTime); 
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2); 
+      osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.2);
+    }
+    function sndChirp() {
+      if (!audioCtx) return; 
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.type = 'sine'; 
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(2000, audioCtx.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(3000, audioCtx.currentTime + 0.1); 
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); 
+      osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.1);
+    }
+    function sndVictoryChime() {
+        if (!audioCtx) return;
+        const notes = [400, 500, 600, 800, 1000];
+        notes.forEach((freq, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i*0.1);
+            gain.gain.setValueAtTime(0, audioCtx.currentTime + i*0.1);
+            gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + i*0.1 + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i*0.1 + 0.3);
+            osc.start(audioCtx.currentTime + i*0.1);
+            osc.stop(audioCtx.currentTime + i*0.1 + 0.3);
+        });
+    }
+
+    // --- EXPANDED QUESTION DATABASE WITH CATEGORIES ---
+    const companyData = {
+      "TCS Nebula": [
+        { question: "A train running at 72 km/hr crosses a 260m long platform in 23 seconds. Find the length of the train.", options: ["140m", "160m", "200m", "240m"], correct: 2, reward: 50, category: "Aptitude & Quant", exp: "Speed = 72 km/hr = 20 m/s. Distance = 20 * 23 = 460m. Train length = 460 - 260 = 200m." },
+        { question: "Which of the following is NOT one of the 4 primary pillars of Object-Oriented Programming?", options: ["Polymorphism", "Inheritance", "Compilation", "Encapsulation"], correct: 2, reward: 50, category: "Technical Coding & DSA", exp: "Compilation is a language processing step, whereas Abstraction, Encapsulation, Inheritance, and Polymorphism are OOP paradigms." },
+        { question: "Choose the correct sentence structure:", options: ["The team have decided to launch.", "The team has decided to launch.", "The teams has decided to launch.", "Team have decided launching."], correct: 1, reward: 50, category: "Verbal & Technical Communication", exp: "'Team' operates as a singular collective noun in this context, requiring the singular verb 'has'." },
+        { question: "Explain the primary difference between a process and a thread.", options: ["Threads have independent memory spaces.", "Processes share the same heap.", "A thread is a lightweight unit of a process.", "There is no difference in Linux."], correct: 2, reward: 50, category: "Technical Interview", exp: "Threads exist within a process and share its memory and resources, making context switching between them much faster." }
+      ],
+      "Infosys Outpost": [
+        { question: "Logical Syllogism: All servers are computers. Some computers are mainframes. Conclusion: Some servers are mainframes.", options: ["Definitely True", "Definitely False", "Cannot be determined", "Both True and False"], correct: 2, reward: 50, category: "Verbal & Technical Communication", exp: "The intersection between servers and mainframes is not guaranteed by the premises." },
+        { question: "What is the output? \nint x = 4; \nwhile(x < 10) { x += 3; } \nprint(x);", options: ["9", "10", "12", "13"], correct: 1, reward: 50, category: "Technical Coding & DSA", exp: "x becomes 7, then 10. The loop condition (10 < 10) fails, and 10 is printed." },
+        { question: "Tell me about a time you handled a tight deadline. Which approach is best?", options: ["Work 24/7 until complete.", "Cut features without asking.", "Prioritize MVP, communicate risks, deliver core value.", "Ask for an extension immediately."], correct: 2, reward: 50, category: "HR & Behavioral / Scenario", exp: "The STAR method emphasizes structured prioritization, stakeholder communication, and delivering a Minimum Viable Product." },
+        { question: "Find the next number in the series: 2, 5, 11, 23, 47, ?", options: ["91", "94", "95", "97"], correct: 2, reward: 50, category: "Aptitude & Quant", exp: "The pattern is (n * 2) + 1. So, 47 * 2 + 1 = 95." }
+      ],
+      "Wipro Station": [
+        { question: "Two pipes A and B can fill a tank in 15 mins and 20 mins respectively. Both are opened together, but after 4 mins, pipe A is turned off. Total time required to fill the tank?", options: ["10 min 40 sec", "12 min 30 sec", "14 min 40 sec", "15 min 20 sec"], correct: 2, reward: 50, category: "Aptitude & Quant", exp: "Work done in 4 mins = 4*(1/15 + 1/20) = 4*(7/60) = 7/15. Remaining 8/15 is filled by B in (8/15)*20 = 10.66 mins = 10 min 40 sec. Total = 14 min 40 sec." },
+        { question: "Which of the following is NOT a primitive data type in Java?", options: ["int", "float", "String", "double"], correct: 2, reward: 50, category: "Technical Coding & DSA", exp: "String is an Object (reference type) in Java, not a primitive." },
+        { question: "In a relational database, what enforces entity uniqueness?", options: ["Foreign Key", "Primary Key", "Index", "Trigger"], correct: 1, reward: 50, category: "Technical Interview", exp: "A Primary Key constraint uniquely identifies each record in a table and cannot contain NULL values." },
+        { question: "How do you handle a disagreement with a peer?", options: ["Escalate to management.", "Ignore it and do it your way.", "Discuss objectively using data and find a compromise.", "Concede to avoid conflict."], correct: 2, reward: 50, category: "HR & Behavioral / Scenario", exp: "Focus on data-driven discussions and mutual alignment rather than ego or avoidance." }
+      ],
+      "Oracle Sanctuary": [
+        { question: "Explain ACID properties and how B-Tree indexes differ from Hash indexes during heavy write loads.", options: ["Hash is ordered; B-Tree is O(1)", "B-Tree supports range queries; Hash is O(1) but unordered.", "B-Tree is faster for writes.", "ACID applies only to NoSQL."], correct: 1, reward: 100, category: "Technical Interview", exp: "B-Trees maintain sort order for range scans (O(log N)), while Hash indexes offer O(1) lookups but cannot do range queries. Heavy writes cause B-Tree page splits." },
+        { question: "What is the primary difference between TRUNCATE and DELETE?", options: ["TRUNCATE logs individual row deletions", "DELETE is a DDL command", "TRUNCATE is DDL and cannot be rolled back safely", "DELETE resets identity columns"], correct: 2, reward: 100, category: "Technical Interview", exp: "TRUNCATE is a DDL command that deallocates data pages (minimal logging), whereas DELETE is a DML command that logs every row deletion." },
+        { question: "A bag contains 5 red and 3 blue balls. Two balls are drawn without replacement. Probability both are red?", options: ["5/14", "25/64", "5/8", "10/28"], correct: 0, reward: 100, category: "Aptitude & Quant", exp: "(5/8) * (4/7) = 20/56 = 5/14." },
+        { question: "What is the worst-case time complexity of inserting into a standard Binary Search Tree?", options: ["O(1)", "O(log N)", "O(N)", "O(N log N)"], correct: 2, reward: 100, category: "Technical Coding & DSA", exp: "If the tree becomes skewed (e.g., inserting sorted elements), it degrades to a linked list, making insertion O(N)." }
+      ],
+      "Qualcomm Pulsar": [
+        { question: "What does the `volatile` keyword prevent the compiler from doing, and how do you handle race conditions in ISRs?", options: ["Prevents memory allocation; use semaphores.", "Prevents optimization; use mutexes.", "Prevents caching of the variable; use interrupt masking/spinlocks.", "Prevents global access; use sleep()."], correct: 2, reward: 100, category: "Technical Interview", exp: "`volatile` tells the compiler the value may change outside the program's flow. ISR race conditions are typically handled by briefly disabling interrupts or using spinlocks, not sleeping mutexes." },
+        { question: "How do you clear the nth bit of an integer `num`?", options: ["num &= ~(1 << n)", "num |= (1 << n)", "num ^= (1 << n)", "num >>= n"], correct: 0, reward: 100, category: "Technical Coding & DSA", exp: "Left shift 1 by n, invert it with ~, then use Bitwise AND to clear exactly that bit while preserving others." },
+        { question: "How do you navigate a technical disagreement with a senior engineer when architectural specs conflict?", options: ["Assume they are right.", "Argue until they agree.", "Present a proof-of-concept with metrics showing your approach's merits.", "Go to their manager."], correct: 2, reward: 100, category: "HR & Behavioral / Scenario", exp: "Data and metrics remove subjectivity. Presenting a PoC demonstrates initiative and objective evaluation." },
+        { question: "How many distinct permutations can be made from the word 'QUALCOMM'?", options: ["40320", "20160", "10080", "5040"], correct: 1, reward: 100, category: "Aptitude & Quant", exp: "8 letters total. 'M' repeats twice. 8! / 2! = 40320 / 2 = 20160." } 
+      ],
+      "Google Nexus": [
+        { question: "Design a distributed rate limiter for millions of concurrent requests across global regions. What consensus protocol or cache layer do you choose?", options: ["Memcached with localized counters", "Redis with Lua scripts and Token Bucket algorithm", "MySQL with table locks", "Local server memory"], correct: 1, reward: 150, category: "Technical Interview", exp: "Redis handles high-throughput low-latency checks. Lua scripts ensure atomicity of the Token Bucket algorithm across distributed instances." },
+        { question: "What is the time complexity of Dijkstra's algorithm using a Min-Priority Queue?", options: ["O(V^2)", "O(E + V log V)", "O(E log V)", "O(V + E)"], correct: 1, reward: 150, category: "Technical Coding & DSA", exp: "With a Fibonacci heap or optimized Min-PQ, Dijkstra runs in O(E + V log V) time." },
+        { question: "You play a game rolling a 6-sided die. You can re-roll once if you don't like the first number. What is the expected value of your roll?", options: ["3.5", "4.0", "4.25", "4.5"], correct: 2, reward: 150, category: "Aptitude & Quant", exp: "Expected value of 1 roll is 3.5. Re-roll if you get 1, 2, or 3. The new EV is (4+5+6)/6 + (3.5 * 3/6) = 2.5 + 1.75 = 4.25." },
+        { question: "Which problem cannot be solved optimally using Dynamic Programming?", options: ["0/1 Knapsack", "Longest Common Subsequence", "Traveling Salesman Problem (Polynomial Time)", "Matrix Chain Multiplication"], correct: 2, reward: 150, category: "Technical Coding & DSA", exp: "TSP is NP-Hard; while DP (Held-Karp) solves it in O(n^2 2^n), it cannot solve it in polynomial time." }
+      ],
+      "Apple Monolith": [
+        { question: "How does the OS handle virtual memory page faults at the silicon/kernel boundary, and what causes cache thrashing?", options: ["CPU halts forever; thrashing is caused by fast RAM.", "The MMU triggers a trap to the OS to fetch the page from disk; thrashing is excessive swapping.", "The GPU handles paging; thrashing is CPU overheating.", "The kernel ignores it; thrashing is a network issue."], correct: 1, reward: 150, category: "Technical Interview", exp: "A page fault causes an MMU trap, pausing the thread while the OS pages data from disk. Thrashing occurs when the working set exceeds physical RAM, causing constant swapping." },
+        { question: "Which memory allocation strategy suffers most from external fragmentation?", options: ["Paging", "Segmentation", "Buddy System", "Slab Allocation"], correct: 1, reward: 150, category: "Technical Interview", exp: "Segmentation uses variable-sized memory blocks, leading to scattered free spaces (external fragmentation) over time." },
+        { question: "You are tracing an execution flow on a Directed Acyclic Graph (DAG). Which algorithm applies?", options: ["Prim's Algorithm", "Topological Sort", "Kruskal's Algorithm", "Bellman-Ford"], correct: 1, reward: 150, category: "Technical Coding & DSA", exp: "Topological sorting linearly orders vertices of a DAG such that for every directed edge u->v, u comes before v." },
+        { question: "Describe a time you owned a system end-to-end. What matters most?", options: ["Writing the most lines of code.", "Ensuring architecture scalability, edge-case testing, and cross-functional alignment.", "Delegating testing to QA completely.", "Using the newest frameworks."], correct: 1, reward: 150, category: "HR & Behavioral / Scenario", exp: "End-to-end ownership requires holistic responsibility: from design and alignment to testing and production stability." }
+      ],
+      "Amazon Core": [
+        { question: "Describe a situation where you made a critical decision without complete data to meet an aggressive deadline.", options: ["I missed the deadline waiting for data.", "I used a 'Bias for Action', mitigated risks, and adapted as data arrived.", "I copied a competitor's approach.", "I refused to work until requirements were clear."], correct: 1, reward: 150, category: "HR & Behavioral / Scenario", exp: "Amazon's 'Bias for Action' values calculated risk-taking and agility when speed matters, paired with mechanisms to pivot if needed." },
+        { question: "In system design, what does 'CAP' stand for in the CAP Theorem, and how does DynamoDB handle it?", options: ["Consistency, Availability, Partition Tolerance; DynamoDB allows tuning C vs A.", "Concurrency, Asynchrony, Parallelism; DynamoDB is purely Async.", "Caching, API, Processing; DynamoDB focuses on Processing.", "Compute, Allocation, Performance; DynamoDB focuses on Performance."], correct: 0, reward: 150, category: "Technical Interview", exp: "CAP theorem limits distributed systems to 2 of 3 guarantees. DynamoDB offers eventual consistency (favoring Availability) or strong consistency reads (favoring Consistency)." },
+        { question: "Which data structure is most efficient for implementing an LRU (Least Recently Used) cache?", options: ["Array & Hash Map", "Singly Linked List", "Doubly Linked List & Hash Map", "Binary Search Tree"], correct: 2, reward: 150, category: "Technical Coding & DSA", exp: "A Doubly Linked List allows O(1) node removal/insertion, and a Hash Map provides O(1) lookups to those nodes." },
+        { question: "How many ways can you arrange 5 items into 3 distinct bins such that no bin is empty?", options: ["150", "90", "125", "60"], correct: 0, reward: 150, category: "Aptitude & Quant", exp: "Using Stirling numbers of the second kind and permutations, S(5,3) * 3! = 25 * 6 = 150 ways." }
+      ]
+    };
+
+    const companyIntelFacts = {
+        "TCS Nebula": "Global IT leader; hires 40k+ freshers annually. NQT tests numerical speed and reasoning.",
+        "Infosys Outpost": "Pioneer in global delivery; InfyTQ and HackWithInfy provide direct Tier-1 engineering bypass.",
+        "Wipro Station": "Elite National Talent Hunt evaluates coding hygiene and foundational DSA.",
+        "Oracle Sanctuary": "World authority on enterprise databases; values SQL query optimization and thread safety.",
+        "Qualcomm Pulsar": "Silicon & 5G pioneer; technical rounds dive into low-level C, registers, and OS kernels.",
+        "Google Nexus": "Benchmark of Big-Tech; algorithmic optimization, edge cases, and graph theory are mandatory.",
+        "Apple Monolith": "Pinnacle of consumer hardware/software synergy; focuses on clean architecture, systems, and memory.",
+        "Amazon Core": "Hyper-scale cloud and logistics; 14 Leadership Principles carry equal weight with DSA."
+    };
+
+    // --- STATE MANAGEMENT ---
+    let gameState = {
+      isStarted: false, launchTime: 0,
+      techScrap: 0, hull: 100, rank: "Cadet", clearedPlanets: [], activePlanet: null,
+      currentEncounterQuestions: [], currentQuestionIndex: 0, timer: 30, timerInterval: null,
+      upgrades: { timeDilation: false, quantum5050: false, shieldReinforcement: false },
+      encounter: { quantumUsed: false }, 
+      stats: { questionsAttempted: 0, questionsCorrect: 0, totalScrapEarned: 0 },
+      tier1Alert: false, tier2Alert: false,
+      
+      // REAL-TIME TELEMETRY TRACKING ENGINE
+      playerAudit: {
+        totalAttempted: 0,
+        correctCount: 0,
+        wrongCount: 0,
+        topicBreakdown: {
+          "Aptitude & Quant": { correct: 0, wrong: 0, mistakes: [] },
+          "Technical Coding & DSA": { correct: 0, wrong: 0, mistakes: [] },
+          "Verbal & Technical Communication": { correct: 0, wrong: 0, mistakes: [] },
+          "Technical Interview": { correct: 0, wrong: 0, mistakes: [] },
+          "HR & Behavioral / Scenario": { correct: 0, wrong: 0, mistakes: [] }
+        },
+        companyHistory: {}
+      }
+    };
+
+    const gameModal = document.getElementById('game-modal'); const engModal = document.getElementById('eng-modal');
+    const diagModal = document.getElementById('diag-modal');
+    const winModal = document.getElementById('win-modal'); const gameOverModal = document.getElementById('game-over-modal');
+    const iridescenceModal = document.getElementById('iridescence-modal');
+    const lifelinesPanel = document.getElementById('lifelines-panel'); const btn5050 = document.getElementById('btn-5050');
+    const damageVignette = document.getElementById('damage-vignette'); 
+    const gpStatus = document.getElementById('gamepad-status');
+    const crosshair = document.getElementById('crosshair');
+    const orbitPrompt = document.getElementById('orbit-prompt');
+    const waypointArrow = document.getElementById('waypoint-arrow');
+    const resumePrompt = document.getElementById('resume-prompt');
+    const engineGlow = document.getElementById('engine-glow');
+    const canopy = document.getElementById('cockpit-canopy');
+    const holographicHud = document.getElementById('holographic-hud');
+    const glassSheer = document.getElementById('glass-sheer');
+    const pitchLadder = document.getElementById('pitch-ladder');
+    const intelBanner = document.getElementById('intel-banner');
+
+    // MFD Elements
+    const hudHullText = document.getElementById('hud-hull-text');
+    const hullBarInner = document.getElementById('hull-bar-inner');
+    const hudScrap = document.getElementById('hud-scrap');
+    const hudRank = document.getElementById('hud-rank');
+    const telemetryData = document.getElementById('telemetry-data');
+    const targetDisplay = document.getElementById('target-display');
+
+    // --- INPUT MANAGEMENT ---
+    const keys = { w:false, a:false, s:false, d:false, arrowup:false, arrowdown:false, arrowleft:false, arrowright:false, ' ':false, e:false, m:false, shift:false, tab:false };
+    
+    let activeTarget = null; let lastTarget = null; let intelFadeTimeout = null;
+    let nearbyPlanet = null; let isModalActive = false; 
+    let lastGamepadState = {}; let engBayFocusIndex = 0; let engBayLastNavTime = 0;
+    let currentWarpSpeed = 2; window.currentThrottle = 0;
+    let gpPrevA = false; let gpPrevRB = false; let gpPrevDiag = false;
+    let swayX = 0; let swayY = 0; let swayRot = 0;
+    let cockpitImpactShudderTime = 0;
+    let impactBannerTimeout = null;
+    
+    // --- START SCREEN & POINTER LOCK LOGIC ---
+    function launchGame() {
+        if (gameState.isStarted) return;
+        gameState.isStarted = true; gameState.launchTime = Date.now();
+        initAudio(); sndLaunch(); playBGM();
+        
+        try { document.body.requestPointerLock(); } catch(e) {}
+        
+        currentWarpSpeed = 25; 
+        setTimeout(() => { let slowDown = setInterval(() => { currentWarpSpeed -= 0.5; if(currentWarpSpeed <= 2) { currentWarpSpeed = 2; clearInterval(slowDown); } }, 20); }, 800);
+        
+        const shock = document.createElement('div'); shock.className = 'shockwave';
+        shock.style.animation = 'shockwaveExpand 0.8s ease-out forwards';
+        document.body.appendChild(shock);
+        
+        const flare = document.createElement('div'); flare.className = 'lens-flare';
+        flare.style.animation = 'flareFlash 0.8s ease-out forwards';
+        document.body.appendChild(flare);
+        
+        const gameBody = document.getElementById('game-body');
+        gameBody.classList.add('warp-shake'); setTimeout(() => gameBody.classList.remove('warp-shake'), 800);
+
+        setTimeout(() => {
+            const ss = document.getElementById('start-screen'); ss.style.opacity = '0';
+            setTimeout(() => { ss.style.display = 'none'; shock.remove(); flare.remove(); }, 500);
+        }, 800);
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!gameState.isStarted) {
+            launchGame();
+        } else if (!isModalActive && document.pointerLockElement !== document.body && e.target.id !== 'btn-open-eng' && e.target.id !== 'btn-toggle-bgm' && e.target.id !== 'btn-open-diag') {
+            try { document.body.requestPointerLock(); } catch(e) {}
+        }
+    });
+
+    let isDragging = false;
+    document.addEventListener('mousedown', () => { isDragging = true; });
+    document.addEventListener('mouseup', () => { isDragging = false; });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isModalActive && gameState.isStarted) {
+            if (document.pointerLockElement === document.body || isDragging) {
+                camera.rotation.y -= e.movementX * 0.002;
+                camera.rotation.x -= e.movementY * 0.002;
+                camera.rotation.x = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, camera.rotation.x));
+                camera.rotation.z = 0; 
+                camera.updateProjectionMatrix();
+            }
+        }
+    });
+
+    window.addEventListener('keydown', e => {
+      let k = e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase();
+      if (e.code === 'Space') k = ' ';
+      
+      if (k === 'tab') { e.preventDefault(); keys['tab'] = true; }
+      else if (keys.hasOwnProperty(k)) keys[k] = true;
+      
+      if (!gameState.isStarted && (k === 'enter' || k === ' ')) { launchGame(); return; }
+      if (!gameState.isStarted) return;
+
+      if(k === 'e') { if (!gameModal.classList.contains('active') && !winModal.classList.contains('active') && !gameOverModal.classList.contains('active') && !diagModal.classList.contains('active') && !iridescenceModal.classList.contains('active')) toggleEngBay(); }
+      if(k === 'm') toggleBGM();
+      if(k === 'tab') { if (!gameModal.classList.contains('active') && !winModal.classList.contains('active') && !gameOverModal.classList.contains('active') && !engModal.classList.contains('active') && !iridescenceModal.classList.contains('active')) toggleDiag(); }
+      
+      if (isModalActive && gameModal.classList.contains('active')) {
+          if (k === '1') clickOption(0); 
+          if (k === '2') clickOption(1);
+          if (k === '3') clickOption(2); 
+          if (k === '4') clickOption(3);
+      }
+    });
+
+    window.addEventListener('keyup', e => {
+      let k = e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase();
+      if (e.code === 'Space') k = ' ';
+      if (keys.hasOwnProperty(k)) keys[k] = false;
+    });
+
+    function handleModalGamepad(gp) {
+        let stickY = gp.axes[1] || 0;
+        
+        if (engModal.classList.contains('active')) {
+            let navDir = 0;
+            if (gp.buttons[12]?.pressed || stickY < -0.5) navDir = -1;
+            if (gp.buttons[13]?.pressed || stickY > 0.5) navDir = 1;
+            if (navDir !== 0 && Date.now() - engBayLastNavTime > 250) {
+                engBayFocusIndex += navDir;
+                if (engBayFocusIndex < 0) engBayFocusIndex = 0;
+                if (engBayFocusIndex > 2) engBayFocusIndex = 2;
+                updateEngBayFocus(); engBayLastNavTime = Date.now(); if(!audioCtx) initAudio(); 
+            }
+        }
+
+        const isAPressed = gp.buttons[0]?.pressed;
+        if (isAPressed && !lastGamepadState[0]) {
+            if(!audioCtx) initAudio();
+            if (gameModal.classList.contains('active')) { clickOption(0); } 
+            else if (winModal.classList.contains('active')) { document.getElementById('btn-play-again').click(); } 
+            else if (gameOverModal.classList.contains('active')) { document.getElementById('btn-restart').click(); }
+            else if (engModal.classList.contains('active')) {
+                const focusedItem = document.querySelectorAll('.upgrade-item')[engBayFocusIndex];
+                if (focusedItem) { const btn = focusedItem.querySelector('button'); if (btn && !btn.disabled) btn.click(); }
+            }
+            else if (iridescenceModal.classList.contains('active')) {
+                document.getElementById('btn-fireworks').click();
+            }
+        }
+        lastGamepadState[0] = isAPressed;
+
+        const isBPressed = gp.buttons[1]?.pressed;
+        if (isBPressed && !lastGamepadState[1]) {
+            if(!audioCtx) initAudio();
+            if (gameModal.classList.contains('active')) clickOption(1); 
+            else if (engModal.classList.contains('active')) toggleEngBay();
+            else if (diagModal.classList.contains('active')) toggleDiag();
+            else if (iridescenceModal.classList.contains('active')) closeIridescence();
+        }
+        lastGamepadState[1] = isBPressed;
+
+        const isXPressed = gp.buttons[2]?.pressed;
+        if (isXPressed && !lastGamepadState[2]) {
+            if(!audioCtx) initAudio();
+            if (gameModal.classList.contains('active')) clickOption(2);
+        }
+        lastGamepadState[2] = isXPressed;
+
+        const isYPressed = gp.buttons[3]?.pressed;
+        if (isYPressed && !lastGamepadState[3]) {
+            if(!audioCtx) initAudio();
+            if (gameModal.classList.contains('active')) { if (gameState.upgrades.quantum5050 && !gameState.encounter.quantumUsed) { btn5050.click(); } else { clickOption(3); } }
+        }
+        lastGamepadState[3] = isYPressed;
+        
+        const isRBPressed = gp.buttons[5]?.pressed;
+        if (isRBPressed && !gpPrevRB) {
+             if(!audioCtx) initAudio(); toggleEngBay();
+        }
+        gpPrevRB = isRBPressed;
+
+        const isDiagPressed = gp.buttons[8]?.pressed;
+        if (isDiagPressed && !gpPrevDiag) {
+             if(!audioCtx) initAudio(); toggleDiag();
+        }
+        gpPrevDiag = isDiagPressed;
+    }
+
+    function clickOption(index) { const btns = document.querySelectorAll('#options-container .btn-option'); if (btns[index] && !btns[index].disabled) { btns[index].click(); } }
+
+    function updateEngBayFocus() { document.querySelectorAll('.upgrade-item').forEach((el, idx) => { if (idx === engBayFocusIndex) el.classList.add('focused-item'); else el.classList.remove('focused-item'); }); }
+    
+    function toggleEngBay() {
+        if (engModal.classList.contains('active')) { 
+            engModal.classList.remove('active'); 
+            if (gameState.isStarted) { try{document.body.requestPointerLock();}catch(e){} }
+        } else if (!isModalActive && gameState.isStarted) { 
+            document.exitPointerLock();
+            engModal.classList.add('active'); 
+            engBayFocusIndex = 0; updateEngBayFocus(); 
+        }
+    }
+
+    function toggleDiag() {
+        if (diagModal.classList.contains('active')) { 
+            diagModal.classList.remove('active'); 
+            if (gameState.isStarted) { try{document.body.requestPointerLock();}catch(e){} }
+        } else if (!isModalActive && gameState.isStarted) { 
+            document.exitPointerLock();
+            generateDiagnostics();
+            diagModal.classList.add('active'); 
+        }
+    }
+    document.getElementById('btn-open-diag').addEventListener('click', (e) => { e.stopPropagation(); toggleDiag(); });
+    document.getElementById('btn-close-diag').addEventListener('click', (e) => { e.stopPropagation(); toggleDiag(); });
+
+    function closeIridescence() {
+        iridescenceModal.classList.remove('active');
+        if (gameState.isStarted) { try{document.body.requestPointerLock();}catch(e){} }
+    }
+
+    document.getElementById('btn-fireworks').addEventListener('click', () => {
+        sndVictoryChime();
+        const end = Date.now() + 3000;
+        (function frame() {
+            confetti({ particleCount: 10, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#4a00e0', '#00f2fe', '#4facfe'] });
+            confetti({ particleCount: 10, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#4a00e0', '#00f2fe', '#4facfe'] });
+            if (Date.now() < end) requestAnimationFrame(frame);
+        }());
+    });
+
+    function generateDiagnostics() {
+        const container = document.getElementById('diag-container');
+        const audit = gameState.playerAudit;
+        let html = '';
+
+        if (audit.totalAttempted === 0) {
+            container.innerHTML = `<p class="diag-p" style="text-align:center;">Insufficient telemetry data. Engage corporate sectors to calibrate diagnostics.</p>`;
+            return;
+        }
+
+        let clearanceIndex = Math.round((audit.correctCount / audit.totalAttempted) * 100);
+        let tierBonus = (gameState.clearedPlanets.length * 5);
+        let finalScore = Math.min(100, clearanceIndex + tierBonus);
+        
+        let gradeColor = finalScore >= 80 ? "var(--success-green)" : (finalScore >= 50 ? "var(--gold-scrap)" : "var(--danger-red)");
+
+        html += `<div class="diag-section" style="text-align:center;">
+                    <div class="diag-h3" style="color: ${gradeColor}; font-size: 1.5rem;">Corporate Clearance Index: ${finalScore}%</div>
+                    <p class="diag-p">Total Interactions: ${audit.totalAttempted} | Successful: ${audit.correctCount} | Deviations: ${audit.wrongCount}</p>
+                 </div>`;
+
+        let strengths = [];
+        let weaknesses = [];
+        let remediation = [];
+
+        for (const [topic, data] of Object.entries(audit.topicBreakdown)) {
+            let total = data.correct + data.wrong;
+            if (total === 0) continue;
+            let accuracy = (data.correct / total) * 100;
+            
+            if (accuracy >= 70) {
+                strengths.push(topic);
+            } else if (accuracy <= 40) {
+                weaknesses.push(topic);
+                let specificAdvice = "Requires intensive review.";
+                if (topic === "Aptitude & Quant") specificAdvice = "Numerical and logical reasoning matrices degraded. Recommend speed-math drills and probability formulas.";
+                else if (topic === "Technical Coding & DSA") specificAdvice = "Identified persistent edge-case failures in DP, Graphs, and bitwise logic. Focus on algorithmic complexity bounds.";
+                else if (topic === "Verbal & Technical Communication") specificAdvice = "Corporate communication protocols failing. Review deductive reasoning and technical comprehension.";
+                else if (topic === "Technical Interview") specificAdvice = "System scaling and OS/DB architecture methodologies failing checks. Review CAP theorem and low-level memory.";
+                else if (topic === "HR & Behavioral / Scenario") specificAdvice = "Behavioral matrices out of alignment with corporate Leadership Principles. Standardize responses using the STAR method.";
+                
+                remediation.push(`<span style="color:var(--neon-cyan)">[${topic}]</span> ${specificAdvice}`);
+            }
+        }
+
+        if (strengths.length > 0) {
+            html += `<div class="diag-section">
+                        <div class="diag-h3">Strengths Analysis</div>
+                        <ul class="diag-list">`;
+            strengths.forEach(s => html += `<li class="diag-good">Exceptional heuristic performance in ${s}.</li>`);
+            html += `</ul></div>`;
+        }
+
+        if (weaknesses.length > 0) {
+            html += `<div class="diag-section">
+                        <div class="diag-h3">Weakness Radar</div>
+                        <ul class="diag-list">`;
+            weaknesses.forEach(w => html += `<li class="diag-bad">Critical failure rate in ${w}.</li>`);
+            html += `</ul></div>`;
+            
+            html += `<div class="diag-section">
+                        <div class="diag-h3">AI Remediation Roadmap</div>
+                        <ul class="diag-list">`;
+            remediation.forEach(r => html += `<li style="border-left-color: var(--gold-scrap);">${r}</li>`);
+            html += `</ul></div>`;
+        } else if (strengths.length > 0 && weaknesses.length === 0) {
+             html += `<div class="diag-section">
+                        <div class="diag-h3">AI Remediation Roadmap</div>
+                        <p class="diag-p" style="color: var(--success-green);">All active telemetry matrices operating at peak efficiency. Proceed to Core Worlds.</p>
+                     </div>`;
+        }
+
+        container.innerHTML = html;
+    }
+
+    // --- MAIN RENDER AND INPUT LOOP ---
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.1);
+      
+      planets.forEach((p, index) => { 
+          if(p.group.userData.animate) p.group.userData.animate(dt);
+          p.mesh.rotation.y += 0.05 * dt; 
+      });
+
+      if (cockpitImpactShudderTime > 0) cockpitImpactShudderTime -= dt;
+
+      if (!gameState.isStarted) {
+          let gamepads = [];
+          try { gamepads = navigator.getGamepads ? navigator.getGamepads() : []; } catch(e) {}
+          for (let i = 0; i < gamepads.length; i++) {
+              const gp = gamepads[i];
+              if (gp && gp.connected && (gp.buttons[0]?.pressed || gp.buttons[9]?.pressed)) {
+                  launchGame(); break;
+              }
+          }
+          renderer.render(scene, camera);
+          return; 
+      }
+
+      isModalActive = document.querySelector('.modal-overlay.active') !== null;
+      let moveSpeed = 14.0; 
+      let rotSpeed = 0.03;
+      let yawInput = 0; let pitchInput = 0;
+      let isBoosting = false;
+
+      if (!isModalActive) {
+          if (document.pointerLockElement !== document.body && !isDragging) { resumePrompt.style.display = 'block'; } else { resumePrompt.style.display = 'none'; }
+
+          if (keys['shift']) isBoosting = true;
+          let currentSpeed = moveSpeed;
+          if (isBoosting) currentSpeed = 32.0;
+
+          if (keys['w'] || keys['arrowup']) { camera.translateZ(-currentSpeed); pitchInput = -1; window.currentThrottle = isBoosting ? 1.0 : 0.4; }
+          else { window.currentThrottle = 0; }
+          
+          if (keys['s'] || keys['arrowdown']) { camera.translateZ(moveSpeed); pitchInput = 1; }
+          if (keys['a'] || keys['arrowleft']) { camera.translateX(-moveSpeed); yawInput = -1; }
+          if (keys['d'] || keys['arrowright']) { camera.translateX(moveSpeed); yawInput = 1; }
+          if (keys[' '] && !nearbyPlanet) camera.translateY(moveSpeed);
+
+          if (keys[' '] && nearbyPlanet) attemptDock();
+
+          let gamepads = [];
+          try { gamepads = navigator.getGamepads ? navigator.getGamepads() : []; } catch(e) {}
+          const gp = gamepads[0];
+          
+          if (gp && gp.connected) {
+              gpStatus.style.display = 'block';
+              if (Math.abs(gp.axes[0]) > 0.15) { camera.translateX(gp.axes[0] * moveSpeed); yawInput = gp.axes[0]; }
+              if (Math.abs(gp.axes[1]) > 0.15) { camera.translateZ(gp.axes[1] * moveSpeed); pitchInput = gp.axes[1]; }
+              if (Math.abs(gp.axes[2]) > 0.15) camera.rotation.y -= gp.axes[2] * rotSpeed;
+              if (Math.abs(gp.axes[3]) > 0.15) {
+                  camera.rotation.x -= gp.axes[3] * rotSpeed;
+                  camera.rotation.x = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, camera.rotation.x));
+              }
+              
+              const r2Val = gp.buttons[7] ? gp.buttons[7].value : 0;
+              if (r2Val > 0.1) { 
+                  let gSpeed = moveSpeed + ((32.0 - moveSpeed) * r2Val);
+                  camera.translateZ(-gSpeed); window.currentThrottle = r2Val; 
+              }
+              
+              const l2Val = gp.buttons[6] ? gp.buttons[6].value : 0;
+              if (l2Val > 0.1) camera.translateZ(moveSpeed * l2Val);
+              
+              const isRBPressed = gp.buttons[5]?.pressed;
+              if (isRBPressed && !gpPrevRB) toggleEngBay(); gpPrevRB = isRBPressed;
+
+              const isDiagPressed = gp.buttons[8]?.pressed;
+              if (isDiagPressed && !gpPrevDiag) toggleDiag(); gpPrevDiag = isDiagPressed;
+
+              if (gp.buttons[0]?.pressed && !lastGamepadState[0]) attemptDock(); lastGamepadState[0] = gp.buttons[0]?.pressed;
+
+          } else {
+              gpStatus.style.display = 'none';
+          }
+      } else {
+          resumePrompt.style.display = 'none';
+          let gamepads = [];
+          try { gamepads = navigator.getGamepads ? navigator.getGamepads() : []; } catch(e) {}
+          const gp = gamepads[0];
+          if (gp && gp.connected) handleModalGamepad(gp);
+          window.currentThrottle = 0;
+      }
+
+      // Starfield Particle Loop (Warp Speed Effect)
+      const positions = starGeo.attributes.position.array; 
+      const camPos = camera.position;
+      const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      
+      let warpSpeed = (window.currentThrottle > 0) ? (currentWarpSpeed + window.currentThrottle * 40) : 0;
+      
+      for(let i=0; i<starCount*3; i+=3) {
+          positions[i] -= fwd.x * warpSpeed;
+          positions[i+1] -= fwd.y * warpSpeed;
+          positions[i+2] -= fwd.z * warpSpeed;
+
+          let dx = positions[i] - camPos.x; let dy = positions[i+1] - camPos.y; let dz = positions[i+2] - camPos.z;
+          if (dx > 3000) positions[i] -= 6000; else if (dx < -3000) positions[i] += 6000;
+          if (dy > 3000) positions[i+1] -= 6000; else if (dy < -3000) positions[i+1] += 6000;
+          if (dz > 3000) positions[i+2] -= 6000; else if (dz < -3000) positions[i+2] += 6000;
+      }
+      starGeo.attributes.position.needsUpdate = true;
+
+      let targetSwayX = -yawInput * 15;
+      let targetSwayY = pitchInput * 10;
+      let targetSwayRot = -yawInput * 2;
+      
+      swayX += (targetSwayX - swayX) * 0.1;
+      swayY += (targetSwayY - swayY) * 0.1;
+      swayRot += (targetSwayRot - swayRot) * 0.1;
+      
+      let rumbleX = 0; let rumbleY = 0;
+      if (window.currentThrottle > 0 && !isModalActive) {
+          rumbleX = (Math.random() - 0.5) * window.currentThrottle * 4;
+          rumbleY = (Math.random() - 0.5) * window.currentThrottle * 4;
+      }
+      if (cockpitImpactShudderTime > 0) {
+          rumbleX += (Math.random() - 0.5) * 40;
+          rumbleY += (Math.random() - 0.5) * 40;
+      }
+
+      engineGlow.style.opacity = window.currentThrottle > 0 && !isModalActive ? (window.currentThrottle * 0.8) : 0;
+      
+      const swayTransform = `translate3d(${swayX + rumbleX}px, ${swayY + rumbleY}px, 0) rotate(${swayRot}deg)`;
+      canopy.style.transform = swayTransform;
+      holographicHud.style.transform = swayTransform;
+
+      glassSheer.style.backgroundPosition = `${camera.rotation.y * 500}px 0`;
+      pitchLadder.style.transform = `translateY(${camera.rotation.x * 60}px)`;
+
+      // --- TARGETING RAYCAST & HUD LOGIC ---
+      let camDir = new THREE.Vector3();
+      camera.getWorldDirection(camDir);
+      let closestAngle = Infinity;
+      let newTarget = null;
+      let closestDist = Infinity;
+      let closestNode = null;
+
+      planets.forEach(p => {
+          p.sprite.visible = false; 
+          
+          let vecToPlanet = p.group.position.clone().sub(camera.position);
+          let dist = vecToPlanet.length();
+          
+          const safeDist = p.radius + 150;
+          if (dist < safeDist) {
+              const pushDir = camera.position.clone().sub(p.group.position).normalize();
+              camera.position.copy(p.group.position.clone().add(pushDir.multiplyScalar(safeDist)));
+          }
+
+          if (dist < 450 && dist < closestDist) { closestDist = dist; closestNode = p; }
+
+          if (dist > 0) {
+              vecToPlanet.normalize();
+              let angle = camDir.angleTo(vecToPlanet);
+              if (angle < 0.14 && angle < closestAngle) { // ~8 degrees
+                  closestAngle = angle;
+                  newTarget = p;
+              }
+          }
+      });
+
+      if (newTarget) {
+          activeTarget = newTarget;
+          activeTarget.sprite.visible = true; 
+          
+          if (activeTarget !== lastTarget) {
+              sndChirp();
+              clearTimeout(intelFadeTimeout);
+              document.getElementById('tactical-intel-card').style.opacity = 1;
+              document.getElementById('intel-header').textContent = `[ TARGET ACQUIRED: ${activeTarget.name.toUpperCase()} ]`;
+              
+              if (activeTarget.tierLevel === 0) {
+                  document.getElementById('intel-tier').textContent = `STATUS: ${activeTarget.locked ? 'LOCKED' : 'EVENT TARGET'} | GRAND ZENITH`;
+                  document.getElementById('intel-fact').textContent = "Flagship Gameathon convergence point detected.";
+              } else {
+                  document.getElementById('intel-tier').textContent = `STATUS: ${activeTarget.locked ? 'LOCKED' : (activeTarget.cleared ? 'CLEARED' : 'UNLOCKED')} | TIER ${activeTarget.tierLevel}`;
+                  document.getElementById('intel-fact').textContent = companyIntelFacts[activeTarget.name] || "Analyzing planetary data...";
+              }
+              document.getElementById('crosshair').classList.add('locked');
+          }
+          let distToTarget = Math.floor(camera.position.distanceTo(activeTarget.group.position));
+          document.getElementById('intel-dist').textContent = `DISTANCE: ${distToTarget}M`;
+          lastTarget = activeTarget;
+      } else {
+          activeTarget = null;
+          if (lastTarget !== null) {
+              document.getElementById('crosshair').classList.remove('locked');
+              intelFadeTimeout = setTimeout(() => {
+                  document.getElementById('tactical-intel-card').style.opacity = 0;
+              }, 300);
+              lastTarget = null;
+          }
+      }
+
+      // Waypoint Navigation Arrow Logic
+      let targetWaypoint = null;
+      let wpTargetDist = Infinity;
+      planets.forEach(p => {
+          const dist = camera.position.distanceTo(p.group.position);
+          if (!p.locked && !p.cleared && dist < wpTargetDist) { wpTargetDist = dist; targetWaypoint = p; }
+      });
+
+      if (targetWaypoint) {
+          targetDisplay.innerHTML = `LOCK: ${targetWaypoint.name}<br>DIST: ${Math.floor(wpTargetDist)} KM`;
+          if (!isModalActive) {
+              const pos = targetWaypoint.group.position.clone();
+              pos.project(camera); 
+              const isBehind = pos.z > 1;
+              const isOffScreen = isBehind || Math.abs(pos.x) > 0.9 || Math.abs(pos.y) > 0.9;
+
+              if (isOffScreen) {
+                  waypointArrow.style.opacity = 1;
+                  let angle = Math.atan2(pos.y, pos.x);
+                  if (isBehind) { pos.x *= -1; pos.y *= -1; angle = Math.atan2(pos.y, pos.x); }
+                  const xEdge = Math.max(-0.85, Math.min(0.85, pos.x)); const yEdge = Math.max(-0.85, Math.min(0.85, pos.y));
+                  const px = (xEdge * 0.5 + 0.5) * window.innerWidth; const py = (-yEdge * 0.5 + 0.5) * window.innerHeight;
+
+                  waypointArrow.style.left = px + 'px'; waypointArrow.style.top = py + 'px';
+                  waypointArrow.querySelector('.wp-pointer').style.transform = `rotate(${-angle + Math.PI/2}rad)`;
+                  waypointArrow.querySelector('.wp-label').textContent = `${targetWaypoint.name} (${Math.floor(wpTargetDist)}m)`;
+                  
+                  if (targetWaypoint.name === "Planet Iridescence") { waypointArrow.classList.add('chromatic-wp'); } 
+                  else { waypointArrow.classList.remove('chromatic-wp'); }
+
+              } else { waypointArrow.style.opacity = 0; }
+          }
+      } else { 
+          targetDisplay.innerHTML = `LOCK: NONE<br>DIST: -- KM`;
+          waypointArrow.style.opacity = 0; 
+      }
+
+      if (closestNode && closestDist < (closestNode.name === "Planet Iridescence" ? 450 : 420)) {
+          const sys = closestNode.name;
+          const isLocked = closestNode.locked;
+          const isCleared = closestNode.cleared;
+          
+          orbitPrompt.style.display = 'block';
+
+          if (isLocked) {
+              orbitPrompt.className = 'denied';
+              orbitPrompt.textContent = "[ALERT: SHIELD ACTIVE - 2 TIER 3 SECTORS REQUIRED]";
+              if(closestNode.tierLevel === 1) orbitPrompt.textContent = "[ALERT: SHIELD ACTIVE - 1 TIER 2 SECTOR REQUIRED]";
+              if(closestNode.tierLevel === 0) orbitPrompt.textContent = "[ALERT: SHIELD ACTIVE - 1 TIER 1 SECTOR REQUIRED]";
+          } else if (isCleared) {
+              orbitPrompt.className = '';
+              orbitPrompt.textContent = "[ SYSTEM CLEARED. PROCEED TO NEXT VECTOR ]";
+          } else {
+              nearbyPlanet = sys;
+              orbitPrompt.className = '';
+              orbitPrompt.textContent = "[ ORBIT REACHED: PRESS SPACE OR 'A' TO ENTER ]";
+              if(closestNode.tierLevel === 0) orbitPrompt.textContent = "[ IRIDESCENCE REACHED: PRESS SPACE OR 'A' TO ENTER ]";
+              
+              const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+              const gp = gamepads[0];
+              const aPressed = gp && gp.buttons[0] && gp.buttons[0].pressed;
+              
+              if (!isModalActive && (keys[' '] || aPressed) && Date.now() - gameState.launchTime > 1000) {
+                  if (!gpPrevA && !keys.SpacePrev) attemptDock(sys);
+              }
+              gpPrevA = aPressed;
+              keys.SpacePrev = keys[' '];
+          }
+      } else { 
+          orbitPrompt.style.display = 'none'; 
+          gpPrevA = false; keys.SpacePrev = false;
+      }
+
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(animate);
+
+    function attemptDock(targetSystem = null) {
+      if (isModalActive) return;
+      if (Date.now() - gameState.launchTime < 400) return; 
+      
+      const sys = targetSystem || nearbyPlanet;
+      if (!sys) return;
+      const pNode = planets.find(p => p.name === sys);
+      if (!pNode || pNode.locked || pNode.cleared) return;
+      
+      sndDock(); document.exitPointerLock(); 
+      if (sys === "Planet Iridescence") {
+          document.getElementById('iridescence-modal').classList.add('active');
+      } else {
+          startGame(sys);
+      }
+    }
+
+    document.getElementById('btn-open-eng').addEventListener('click', (e) => { e.stopPropagation(); toggleEngBay(); });
+    window.buyUpgrade = function(upgradeId, cost, btnEl) {
+      if (gameState.techScrap >= cost && !gameState.upgrades[upgradeId]) {
+        gameState.techScrap -= cost; gameState.upgrades[upgradeId] = true; updateHUD(); sndUpgrade();
+        btnEl.textContent = "Purchased"; btnEl.disabled = true; btnEl.style.background = "rgba(40, 167, 69, 0.2)"; btnEl.style.color = "var(--success-green)";
+      } else if (gameState.techScrap < cost) {
+        sndWrong(); btnEl.textContent = "Insufficient Scrap";
+        setTimeout(() => { if(!gameState.upgrades[upgradeId]) btnEl.textContent = "Purchase [A]"; }, 1500);
+      }
+    }
+
+    // --- MODAL & GAMEPLAY FLOW ---
+    function updateHUD() {
+      hudScrap.textContent = gameState.techScrap.toString().padStart(4, '0'); 
+      hudHullText.textContent = `${gameState.hull}%`; 
+      hudRank.textContent = gameState.rank;
+      
+      hullBarInner.style.width = `${gameState.hull}%`;
+      if (gameState.hull <= 40) {
+          hullBarInner.style.backgroundColor = "var(--danger-red)";
+          hullBarInner.style.boxShadow = "0 0 10px var(--danger-red)";
+          hudHullText.style.color = "var(--danger-red)";
+      } else {
+          hullBarInner.style.backgroundColor = "var(--neon-cyan)";
+          hullBarInner.style.boxShadow = "0 0 10px var(--neon-cyan)";
+          hudHullText.style.color = "var(--neon-cyan)";
+      }
+    }
+
+    function startGame(systemName) {
+      gameState.activePlanet = systemName; gameState.currentQuestionIndex = 0; gameState.encounter.quantumUsed = false;
+      const pool = [...companyData[systemName]]; pool.sort(() => 0.5 - Math.random()); gameState.currentEncounterQuestions = pool.slice(0, 3); 
+      if (gameState.upgrades.quantum5050) { lifelinesPanel.style.display = 'block'; btn5050.disabled = false; btn5050.textContent = "Activate Quantum 50/50 [Y]"; } else { lifelinesPanel.style.display = 'none'; }
+      setTimeout(() => { gameModal.classList.add('active'); renderQuestion(); }, 200); 
+    }
+
+    function renderQuestion() {
+      const qIndex = gameState.currentQuestionIndex; const currentQuestion = gameState.currentEncounterQuestions[qIndex];
+      document.getElementById('modal-title').textContent = `${gameState.activePlanet} - Q${qIndex + 1}/3`;
+      
+      const trackDisplay = document.getElementById('question-track');
+      if (currentQuestion.category) {
+          trackDisplay.textContent = `[TRACK: ${currentQuestion.category.toUpperCase()}]`;
+          trackDisplay.style.display = 'block';
+      } else {
+          trackDisplay.style.display = 'none';
+      }
+
+      document.getElementById('question-text').textContent = currentQuestion.question;
+      const optionsContainer = document.getElementById('options-container'); optionsContainer.innerHTML = ''; 
+      
+      document.getElementById('question-explanation').style.display = 'none';
+
+      const gpPrefix = ["[A/1]", "[B/2]", "[X/3]", "[Y/4]"];
+      currentQuestion.options.forEach((opt, idx) => {
+        const btn = document.createElement('button'); btn.className = 'btn btn-option'; btn.textContent = `${gpPrefix[idx] || ''} ${opt}`;
+        btn.style.animationDelay = `${idx * 0.1}s`; btn.onclick = () => handleAnswer(idx, btn, currentQuestion.correct, currentQuestion.reward, currentQuestion);
+        optionsContainer.appendChild(btn);
+      });
+      startTimer();
+    }
+
+    btn5050.addEventListener('click', () => {
+      if (gameState.encounter.quantumUsed) return;
+      gameState.encounter.quantumUsed = true; btn5050.disabled = true; btn5050.textContent = "Charge Depleted"; sndUpgrade();
+      const currentQuestion = gameState.currentEncounterQuestions[gameState.currentQuestionIndex];
+      let wrongIndices = [0, 1, 2, 3].filter(i => i !== currentQuestion.correct);
+      for (let i = wrongIndices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [wrongIndices[i], wrongIndices[j]] = [wrongIndices[j], wrongIndices[i]]; }
+      const btns = document.querySelectorAll('#options-container .btn-option');
+      wrongIndices.slice(0, 2).forEach(idx => { if(btns[idx]) { btns[idx].disabled = true; btns[idx].style.opacity = '0.2'; btns[idx].style.textDecoration = 'line-through'; } });
+    });
+
+    const ring = document.getElementById('timer-ring'); const maxOffset = 113.1; 
+    function startTimer() {
+      clearInterval(gameState.timerInterval);
+      const totalTime = gameState.upgrades.timeDilation ? 45 : 30; gameState.timer = totalTime;
+      const timerDisplay = document.getElementById('modal-timer-text'); const modalBox = document.getElementById('modal-box');
+      
+      function updateTimerVisuals() {
+        timerDisplay.textContent = gameState.timer.toString();
+        const pct = gameState.timer / totalTime; ring.style.strokeDashoffset = maxOffset - (pct * maxOffset);
+        if (gameState.timer <= 5) { ring.style.stroke = "var(--danger-red)"; timerDisplay.style.color = "var(--danger-red)"; modalBox.classList.add('heartbeat'); } 
+        else if (gameState.timer <= 10) { ring.style.stroke = "var(--gold-scrap)"; timerDisplay.style.color = "var(--gold-scrap)"; modalBox.classList.remove('heartbeat'); } 
+        else { ring.style.stroke = "var(--neon-cyan)"; timerDisplay.style.color = "var(--neon-cyan)"; modalBox.classList.remove('heartbeat'); }
+      }
+      
+      updateTimerVisuals();
+      gameState.timerInterval = setInterval(() => {
+        gameState.timer--; updateTimerVisuals();
+        if (gameState.timer <= 0) { clearInterval(gameState.timerInterval); handleTimeout(); }
+      }, 1000);
+    }
+
+    function disableButtons() { document.querySelectorAll('#options-container .btn-option').forEach(b => b.disabled = true); btn5050.disabled = true; }
+
+    function handleAnswer(selectedIndex, btnElement, correctIndex, reward, questionData) {
+      clearInterval(gameState.timerInterval); disableButtons(); document.getElementById('modal-box').classList.remove('heartbeat');
+      
+      // Update Audit Engine
+      gameState.playerAudit.totalAttempted++;
+      const cat = questionData.category;
+
+      const expBox = document.getElementById('question-explanation');
+      if (questionData.exp) {
+          expBox.innerHTML = `<strong>RUBRIC INTEL:</strong> ${questionData.exp}`;
+          expBox.style.display = 'block';
+      }
+
+      if (selectedIndex === correctIndex) {
+        sndCorrect(); btnElement.classList.add('btn-correct');
+        gameState.techScrap += reward; gameState.stats.totalScrapEarned += reward; gameState.stats.questionsCorrect++; updateHUD();
+        
+        if (cat && gameState.playerAudit.topicBreakdown[cat]) {
+            gameState.playerAudit.correctCount++;
+            gameState.playerAudit.topicBreakdown[cat].correct++;
+        }
+      } else {
+        sndWrong(); btnElement.classList.add('btn-wrong'); takeDamage();
+        const btns = document.querySelectorAll('#options-container .btn-option');
+        if(btns[correctIndex]) btns[correctIndex].classList.add('btn-correct');
+        
+        if (cat && gameState.playerAudit.topicBreakdown[cat]) {
+            gameState.playerAudit.wrongCount++;
+            gameState.playerAudit.topicBreakdown[cat].wrong++;
+            gameState.playerAudit.topicBreakdown[cat].mistakes.push({
+                q: questionData.question,
+                exp: questionData.exp
+            });
+        }
+      }
+      setTimeout(nextQuestion, 3500);
+    }
+
+    function handleTimeout() { 
+        sndWrong(); disableButtons(); document.getElementById('modal-box').classList.remove('heartbeat'); 
+        gameState.stats.questionsAttempted++; 
+        
+        const qIndex = gameState.currentQuestionIndex; const currentQuestion = gameState.currentEncounterQuestions[qIndex];
+        const cat = currentQuestion.category;
+
+        const expBox = document.getElementById('question-explanation');
+        if (currentQuestion.exp) {
+            expBox.innerHTML = `<strong>RUBRIC INTEL:</strong> ${currentQuestion.exp}`;
+            expBox.style.display = 'block';
+        }
+
+        if (cat && gameState.playerAudit.topicBreakdown[cat]) {
+            gameState.playerAudit.totalAttempted++;
+            gameState.playerAudit.wrongCount++;
+            gameState.playerAudit.topicBreakdown[cat].wrong++;
+            gameState.playerAudit.topicBreakdown[cat].mistakes.push({
+                q: currentQuestion.question,
+                exp: currentQuestion.exp
+            });
+        }
+        
+        takeDamage(); setTimeout(nextQuestion, 3500); 
+    }
+
+    function takeDamage() {
+      const damage = gameState.upgrades.shieldReinforcement ? 10 : 20; gameState.hull -= damage; updateHUD();
+      
+      const strobe = document.getElementById('emergency-strobe');
+      strobe.classList.add('flash');
+      setTimeout(() => strobe.classList.remove('flash'), 600);
+
+      const modalBox = document.getElementById('modal-box'); 
+      if(modalBox) { modalBox.classList.remove('shake'); void modalBox.offsetWidth; modalBox.classList.add('shake'); }
+      
+      if (gameState.hull <= 0) setTimeout(triggerGameOver, 500);
+    }
+
+    function nextQuestion() {
+      if (gameState.hull <= 0) return;  gameState.currentQuestionIndex++;
+      if (gameState.currentQuestionIndex >= gameState.currentEncounterQuestions.length) { completePlanet(); } 
+      else { if(gameState.upgrades.quantum5050 && !gameState.encounter.quantumUsed) { btn5050.disabled = false; } renderQuestion(); }
+    }
+
+    function completePlanet() {
+      gameModal.classList.remove('active'); gameState.clearedPlanets.push(gameState.activePlanet);
+      const pNode = planets.find(p => p.name === gameState.activePlanet);
+      if (pNode) { pNode.cleared = true; pNode.mesh.material.color.setHex(0x28a745); } 
+
+      if (gameState.activePlanet === "Amazon Core") { setTimeout(triggerWinScreen, 500); } 
+      else { 
+          checkProgression(); 
+          if (gameState.isStarted) { try{document.body.requestPointerLock();}catch(e){} }
+      }
+    }
+
+    function checkProgression() {
+      let tier3Cleared = 0;
+      let tier2Cleared = 0;
+      let tier1Cleared = 0;
+      gameState.clearedPlanets.forEach(p => {
+          const node = planets.find(n => n.name === p);
+          if (node && node.tierLevel === 3) tier3Cleared++;
+          if (node && node.tierLevel === 2) tier2Cleared++;
+          if (node && node.tierLevel === 1) tier1Cleared++;
+      });
+
+      if (tier3Cleared >= 2) {
+          planets.filter(p => p.tierLevel === 2).forEach(p => {
+              if (p.locked) {
+                  p.locked = false;
+                  p.mesh.material.color.setHex(new THREE.Color(p.tintColor).getHex());
+                  updateTextSprite(p.sprite, `${p.name} [Tier 2]`, p.glowColor);
+                  if (!gameState.tier2Alert) { sndUnlock(); gameState.tier2Alert = true; }
+              }
+          });
+      }
+
+      if (tier2Cleared >= 1) {
+          planets.filter(p => p.tierLevel === 1).forEach(p => {
+              if (p.locked) {
+                  p.locked = false;
+                  p.mesh.material.color.setHex(new THREE.Color(p.tintColor).getHex());
+                  updateTextSprite(p.sprite, `${p.name} [Tier 1]`, p.glowColor);
+                  if (!gameState.tier1Alert) { sndUnlock(); gameState.tier1Alert = true; gameState.rank = "Commander"; updateHUD(); }
+              }
+          });
+      }
+
+      if (tier1Cleared >= 1) {
+          const iri = planets.find(p => p.name === "Planet Iridescence");
+          if (iri && iri.locked) {
+              iri.locked = false;
+              iri.mesh.material.color.setHex(new THREE.Color(iri.tintColor).getHex());
+              updateTextSprite(iri.sprite, "IRIDESCENCE 1.0 // SRMIST KTR", iri.glowColor);
+              sndUnlock();
+          }
+      }
+    }
+
+    function triggerWinScreen() {
+      sndUnlock(); document.exitPointerLock(); gameState.rank = "Galactic Engineer"; updateHUD();
+      const acc = Math.round((gameState.stats.questionsCorrect / gameState.stats.questionsAttempted) * 100) || 0;
+      document.getElementById('win-rank').textContent = gameState.rank; document.getElementById('win-scrap').textContent = gameState.stats.totalScrapEarned; document.getElementById('win-accuracy').textContent = `${acc}%`;
+      winModal.classList.add('active'); 
+      const end = Date.now() + 3000;
+      (function frame() { confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ffd700', '#66fcf1', '#b829ea'] }); confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ffd700', '#66fcf1', '#b829ea'] }); if (Date.now() < end) requestAnimationFrame(frame); }());
+    }
+
+    function triggerGameOver() {
+      clearInterval(gameState.timerInterval); gameModal.classList.remove('active'); document.exitPointerLock();
+      document.getElementById('defeat-company').textContent = gameState.activePlanet;
+      gameOverModal.classList.remove('flash-red'); void gameOverModal.offsetWidth; gameOverModal.classList.add('active', 'flash-red');
+    }
+
+    function fullReset() {
+      gameState = { 
+        isStarted: true, launchTime: Date.now(), techScrap: 0, hull: 100, rank: "Cadet", clearedPlanets: [], activePlanet: null, currentEncounterQuestions: [], currentQuestionIndex: 0, timer: 30, timerInterval: null, upgrades: { timeDilation: false, quantum5050: false, shieldReinforcement: false }, encounter: { quantumUsed: false }, stats: { questionsAttempted: 0, questionsCorrect: 0, totalScrapEarned: 0 }, tier1Alert: false, tier2Alert: false,
+        playerAudit: {
+          totalAttempted: 0, correctCount: 0, wrongCount: 0,
+          topicBreakdown: {
+            "Aptitude & Quant": { correct: 0, wrong: 0, mistakes: [] },
+            "Technical Coding & DSA": { correct: 0, wrong: 0, mistakes: [] },
+            "Verbal & Technical Communication": { correct: 0, wrong: 0, mistakes: [] },
+            "Technical Interview": { correct: 0, wrong: 0, mistakes: [] },
+            "HR & Behavioral / Scenario": { correct: 0, wrong: 0, mistakes: [] }
+          },
+          companyHistory: {}
+        }
+      };
+      winModal.classList.remove('active'); gameOverModal.classList.remove('active', 'flash-red');
+      
+      planets.forEach(p => { p.cleared = false; });
+      planets.filter(p => p.tierLevel < 3).forEach(p => {
+          p.locked = true; p.mesh.material.color.setHex(0x333333); 
+          if(p.tierLevel === 0) updateTextSprite(p.sprite, "IRIDESCENCE 1.0 [LOCKED]", "#777777");
+          else updateTextSprite(p.sprite, `${p.name} [Tier ${p.tierLevel} - Locked]`, "#777777");
+      });
+
+      document.querySelectorAll('.btn-upgrade').forEach(btn => { btn.textContent = "Purchase [A]"; btn.disabled = false; btn.style.background = "rgba(102, 252, 241, 0.05)"; btn.style.color = "var(--neon-cyan)"; });
+      
+      camera.position.set(0,0,400); camera.lookAt(0,0,-500);
+      updateHUD(); 
+      try { document.body.requestPointerLock(); } catch(e) {}
+    }
+
+    document.getElementById('btn-play-again').addEventListener('click', fullReset); document.getElementById('btn-restart').addEventListener('click', fullReset);
+    updateHUD();
+  </script>
+</body>
+</html>
