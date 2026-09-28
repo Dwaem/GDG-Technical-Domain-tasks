@@ -1,16 +1,55 @@
-# React + Vite
+# QR Code Generator & Designer
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A client-side QR Code customization and generation web application submitted for the **GDG on Campus SRM Recruitments 2026-27 (Frontend Domain - Task 1)**.
 
-Currently, two official plugins are available:
+🔗 **Live Deployment:** [https://your-app-name.vercel.app](https://your-app-name.vercel.app)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 📸 Screenshots
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Desktop Layout & Live Preview
+![Desktop Layout](./screenshots/desktop-main.png)
 
-## Expanding the Oxlint configuration
+### Wi-Fi Configuration Mode
+![Wi-Fi Configuration](./screenshots/wifi-mode.png)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### Custom Colors & Presets
+![Custom Presets](./screenshots/custom-style.png)
+
+### Scan Reliability Warning (Contrast Guard)
+![Reliability Warning](./screenshots/scan-warning.png)
+
+### Mobile Responsive Layout
+![Mobile View](./screenshots/mobile-view.png)
+
+---
+
+## ✨ Features Implemented
+
+- **Dynamic QR Payloads:** URL, plain text, email (`mailto:`), phone (`tel:`), and Wi-Fi (`WIFI:S:...`).
+- **Real-Time Rendering:** Instant client-side DOM updates powered by `qr-code-styling`.
+- **Customization Engine:** Hex color pickers, dot styling, error correction levels (L, M, Q, H), and margin controls.
+- **Scan Reliability Alert:** Dynamic warnings when low contrast compromises scannability.
+- **Client-Side Export:** Clean, one-click PNG downloads matching preview configurations.
+- **Local Persistence:** Retains recent QR codes in browser `localStorage` across page reloads.
+- **Responsive Layout:** Two-column desktop grid collapsing into a single-column layout for mobile devices.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework:** React 18 + Vite
+- **Styling:** Custom CSS
+- **QR Engine:** `qr-code-styling`
+- **Hosting:** Vercel
+
+---
+
+## 🚀 Local Setup
+
+```bash
+git clone [https://github.com/Dwaem/GDG-Technical-Domain-t.git](https://github.com/Dwaem/GDG-Technical-Domain-t.git)
+cd gdg-qr-generator
+npm install
+npm run dev
